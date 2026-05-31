@@ -44,3 +44,18 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Verify uv.lock is up to date with pyproject.toml
         run: uv lock --locked
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install package and pip-audit
+        run: pip install -e ".[dev]" pip-audit
+      - name: Run pip-audit
+        # --skip-editable skips this package's editable install (it's not on PyPI
+        # until the v0.1.0 release); real dependencies are still audited.
+        run: pip-audit --skip-editable
