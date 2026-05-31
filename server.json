@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.presidio-v/presidio-hardened-x402-mcp",
   "description": "Pre-payment PII screener for x402 — detect emails, SSNs, names, phone numbers in payment metadata before agents sign.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": {
     "url": "https://github.com/presidio-v/presidio-hardened-x402-mcp",
     "source": "github"
@@ -11,7 +11,7 @@
     {
       "registryType": "pypi",
       "identifier": "presidio-hardened-x402-mcp",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "runtimeHint": "uvx",
       "transport": { "type": "stdio" }
     }

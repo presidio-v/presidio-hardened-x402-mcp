@@ -6,6 +6,17 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-05-31
+
+### Added
+
+- README badges (PyPI version, supported Python versions, GitHub release, MIT license, CI status).
+- `<!-- mcp-name: io.github.presidio-v/presidio-hardened-x402-mcp -->` HTML comment in README — ownership-verification annotation for the official MCP Registry. The registry verifies PyPI ownership by checking the package description (which is the README at publish time) for this string. Required for canonical-registry submission, which is the upstream that PulseMCP and other registries ingest from.
+
+### Notes
+
+- No functional code changes. The version bump is required because PyPI does not allow re-uploading the same version, and the README annotation only takes effect when re-published.
+
 ## [0.1.0] — 2026-05-31
 
 Initial public release.

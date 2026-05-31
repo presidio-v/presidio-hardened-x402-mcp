@@ -1,5 +1,13 @@
 # presidio-hardened-x402-mcp
 
+[![PyPI version](https://img.shields.io/pypi/v/presidio-hardened-x402-mcp.svg)](https://pypi.org/project/presidio-hardened-x402-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/presidio-hardened-x402-mcp.svg)](https://pypi.org/project/presidio-hardened-x402-mcp/)
+[![GitHub release](https://img.shields.io/github/v/release/presidio-v/presidio-hardened-x402-mcp.svg)](https://github.com/presidio-v/presidio-hardened-x402-mcp/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/presidio-v/presidio-hardened-x402-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/presidio-v/presidio-hardened-x402-mcp/actions/workflows/ci.yml)
+
+<!-- mcp-name: io.github.presidio-v/presidio-hardened-x402-mcp -->
+
 Pre-payment PII screener for x402 — agents call `screen_payment_metadata(...)` before signing, catching emails, SSNs, phone numbers, names, and other personal data in payment metadata before it reaches the merchant.
 
 Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library.
