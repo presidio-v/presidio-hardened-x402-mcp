@@ -21,8 +21,25 @@ Done once by an account with permission to register a new PyPI project.
 In the repo, go to **Settings → Environments → New environment**:
 
 1. Name: `pypi`
-2. (Optional, recommended) Add **Required reviewers** — anyone on the reviewer list must approve the workflow run before it publishes. This gives a one-click gate per release.
+2. **Required reviewers — MUST be set.** Add at least one maintainer. The reviewer
+   gate is the only thing between a pushed `v*.*.*` tag and a real PyPI publish; without
+   it, anyone who can create a release tag (a compromised CI bot, a stolen contributor
+   credential, a misclicked tag) can publish a version with no human check. For a
+   security-tooling package, treat this as non-optional.
 3. Save.
+
+## Guarding the trust relationship
+
+Once the pending publisher activates, the binding is `(PyPI project, GitHub org, repo,
+workflow filename, environment name)`. Changes to any of those break the binding and
+PyPI will reject the publish:
+
+- Don't rename `release.yml`, the `pypi` environment, or the repo without re-registering
+  the publisher on PyPI.
+- The PyPI-side publisher list (`pypi.org/manage/account/publishing/`) is itself a
+  high-value target. Anyone with PyPI account access could swap the trust relationship
+  to a malicious fork. Audit the PyPI publisher list when reviewing the GitHub repo
+  permissions list.
 
 ## Cutting a release
 
