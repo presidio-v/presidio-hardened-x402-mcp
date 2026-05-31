@@ -164,5 +164,14 @@ MIT. See [LICENSE](LICENSE).
 - Issues: https://github.com/presidio-v/presidio-hardened-x402-mcp/issues
 - Parent library: https://github.com/presidio-v/presidio-hardened-x402
 - Library on PyPI: https://pypi.org/project/presidio-hardened-x402/
+- Requirements: [PRESIDIO-REQ.md](PRESIDIO-REQ.md)
+- Security policy: [SECURITY.md](SECURITY.md)
 - MCP spec: https://modelcontextprotocol.io
 - x402: https://x402.org
+
+---
+
+## SDLC
+
+This repository is developed under the Presidio hardened-family SDLC:
+<https://github.com/presidio-v/presidio-hardened-docs/blob/main/sdlc/sdlc-report.md>.
