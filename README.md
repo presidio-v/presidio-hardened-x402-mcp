@@ -16,7 +16,7 @@ Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit famil
 
 x402 agentic payments routinely carry user-supplied free text — descriptions, memos, query-string parameters — straight through to merchants and facilitators. When an LLM agent generates that text, it can include PII the user never intended to share. Once the merchant logs it, retention is their decision, not yours.
 
-This MCP server gives agents a one-call gate to screen and redact PII *before* the payment leaves the agent host. Three tools, designed to compose with payment-execution and endpoint-safety MCP servers (x402station, Coinbase x402, Sardis, ...).
+This MCP server gives agents a one-call gate to screen and redact PII *before* the payment leaves the agent host. Three tools, designed to compose with payment-execution and endpoint-safety MCP servers ([x402station](https://github.com/sF1nX/x402station-mcp), Coinbase x402, Sardis, ...).
 
 ## Install & configure
 
@@ -154,6 +154,44 @@ agent intent: pay https://api.foo.com/x with 1.50 USDC
 ```
 
 `screen_payment_metadata` is read-only and safe to interleave anywhere. The policy and replay gates record state on call — sequence them immediately before payment.
+
+### Combined snippet: preflight → screen → pay
+
+Endpoint-safety and payload-safety are independent signals — calling both is what you actually want before signing. Configure the two MCP servers side-by-side:
+
+```json
+{
+  "mcpServers": {
+    "x402station":   { "command": "npx", "args": ["-y", "x402station-mcp"],
+                       "env": { "AGENT_PRIVATE_KEY": "0x…" } },
+    "presidio-x402": { "command": "uvx", "args": ["presidio-hardened-x402-mcp"] }
+  }
+}
+```
+
+Agent flow before signing a payment (pseudocode — each step is one MCP tool call):
+
+```python
+# 1. endpoint safety: is the URL trustworthy? (x402station-mcp)
+pf = preflight(url)
+if not pf["ok"]:
+    abort(reason=pf["warnings"])              # decoy / zombie / dead / price-trap
+
+# 2. payload safety: redact PII before it leaves the host (presidio-x402)
+s = screen_payment_metadata(resource_url=url, description=description, reason="")
+url, description = s["redacted_resource_url"], s["redacted_description"]
+
+# 3. spend gates: record-on-success, call exactly once each (presidio-x402)
+if not check_payment_policy(url, amount_usd)["allowed"]:
+    abort(reason="policy")
+if check_payment_replay(url, pay_to, amount, currency, deadline_seconds)["is_replay"]:
+    abort(reason="replay")
+
+# 4. sign + pay
+pay(url, amount, description=description)
+```
+
+The two servers are developed independently, on purpose — keeping the signals uncorrelated is the point. See [x402station-mcp](https://github.com/sF1nX/x402station-mcp) for the preflight tool's full output schema and warning catalog.
 
 ## Notes for developers
 
