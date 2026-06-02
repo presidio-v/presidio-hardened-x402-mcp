@@ -6,6 +6,10 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- README: "Combined snippet: preflight → screen → pay" subsection under Composability, showing the two-server MCP host config and the agent-side call sequence for composing [x402station-mcp](https://github.com/sF1nX/x402station-mcp) (endpoint safety) with this server (payload safety). Coordinated with the x402station-mcp maintainer; the two projects keep independent signals and reciprocal composition pointers, not mutual endorsements.
+
 ## [0.1.1] — 2026-05-31
 
 ### Added
