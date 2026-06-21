@@ -2,7 +2,7 @@
 
 Requirements, feature deliberation, and versioning rationale for the MCP server that exposes [`presidio-hardened-x402`](https://github.com/presidio-v/presidio-hardened-x402) library capabilities to autonomous agents over the Model Context Protocol.
 
-This package is a **thin MCP adapter**. All security primitives live in the parent library; this document specifies how those primitives are made available over stdio MCP transport.
+This package is a **thin MCP adapter**. All security primitives live in the parent library; this document specifies how selected primitives are made available over stdio MCP transport. Version `0.1.2` is pinned to parent `presidio-hardened-x402>=0.7.0,<0.8.0`; it keeps the original three-tool MCP surface and does not expose the parent v0.7.0 SLO-payment broker as an MCP tool.
 
 ---
 
@@ -28,7 +28,7 @@ This package is a **thin MCP adapter**. All security primitives live in the pare
 
 7. **Env-var configuration.** Every runtime knob is a `PRESIDIO_X402_MCP_*` env var (mode, policy limits, replay TTL, audit path, log level, remote URL/key). MCP host config files (e.g. `claude_desktop_config.json`) carry these via their `env:` block.
 
-8. **Wire-contract parity.** Field-length caps (`resource_url ≤ 2048`, `description ≤ 4096`, `reason ≤ 4096`) and entity-finding shape mirror the v0.4.0 screening-api wire contract exactly. A payload accepted in in-process mode is accepted identically by the remote API.
+8. **Wire-contract parity.** Field-length caps (`resource_url ≤ 2048`, `description ≤ 4096`, `reason ≤ 4096`) and entity-finding shape mirror the screening-api wire contract exactly. A payload accepted in in-process mode is accepted identically by the remote API.
 
 ### Scoping decisions (deferred to later versions)
 
@@ -74,6 +74,7 @@ This MCP server inherits the parent library's threat model. MCP-specific additio
 | Tool side effects (`check_payment_policy` and `check_payment_replay` record state on every call) misused | Side-effect warnings in tool docstrings, README, `server.json` env-var descriptions, and `SECURITY.md` |
 | Oversize payload from a compromised agent stresses the lib | Pre-screen field-length validation (`_validate_lengths`) rejects with `ValueError` before the lib is touched |
 | Compromised remote screening service injects fake redacted output | Out of scope — operator must verify TLS configuration and audit policy of the configured remote |
+| Parent v0.7.0 SLO broker misinterpreted as an MCP payment tool | Not exposed in this MCP release; agents must use the parent Python API and verified `ArchTranslucencyAdapter` path for signed degradation evidence |
 
 See the parent lib's [SECURITY.md](https://github.com/presidio-v/presidio-hardened-x402/blob/main/SECURITY.md) and [PRESIDIO-REQ.md](https://github.com/presidio-v/presidio-hardened-x402/blob/main/PRESIDIO-REQ.md) for the library-level threat model and full set of security controls.
 
@@ -86,7 +87,7 @@ See the parent lib's [SECURITY.md](https://github.com/presidio-v/presidio-harden
 - **No silent fallback.** Failure modes are surfaced as structured tool output. The agent decides what to do.
 - **Composition over replacement.** Pairs cleanly with `x402station-mcp` (endpoint safety), payment-execution MCP servers, and governance MCP servers — does not duplicate their surfaces.
 - **Zero-config default.** Works with no env vars set (regex mode, no policy, in-memory replay, NullAuditWriter). Configuration is opt-in escalation.
-- **Wire-contract parity.** What the in-process tool accepts and returns is identical to the v0.4.0 screening-api wire contract. Mode is a transport detail, not a semantic difference.
+- **Wire-contract parity.** What the in-process tool accepts and returns is identical to the screening-api wire contract. Mode is a transport detail, not a semantic difference.
 
 ---
 

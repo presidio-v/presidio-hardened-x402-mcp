@@ -8,15 +8,15 @@
 
 <!-- mcp-name: io.github.presidio-v/presidio-hardened-x402-mcp -->
 
-Pre-payment PII screener for x402 — agents call `screen_payment_metadata(...)` before signing, catching emails, SSNs, phone numbers, names, and other personal data in payment metadata before it reaches the merchant.
+Pre-payment safety gate for x402 — agents call `screen_payment_metadata(...)`, `check_payment_policy(...)`, and `check_payment_replay(...)` before signing, catching PII, budget overruns, and duplicate payments before metadata or money leaves the agent host.
 
-Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library.
+Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned for parent `0.7.x` compatibility (`presidio-hardened-x402>=0.7.0,<0.8.0`).
 
 ## Why this exists
 
 x402 agentic payments routinely carry user-supplied free text — descriptions, memos, query-string parameters — straight through to merchants and facilitators. When an LLM agent generates that text, it can include PII the user never intended to share. Once the merchant logs it, retention is their decision, not yours.
 
-This MCP server gives agents a one-call gate to screen and redact PII *before* the payment leaves the agent host. Three tools, designed to compose with payment-execution and endpoint-safety MCP servers ([x402station](https://github.com/sF1nX/x402station-mcp), Coinbase x402, Sardis, ...).
+This MCP server gives agents a small default-deny gate *before* payment leaves the agent host. Three tools expose the parent library's stable pre-payment controls: PII redaction, spending policy, and replay detection. They are designed to compose with payment-execution and endpoint-safety MCP servers ([x402station](https://github.com/sF1nX/x402station-mcp), Coinbase x402, Sardis, ...), while newer parent-library surfaces such as `evidence-ref@1` verification and the v0.7.0 SLO broker stay in the Python library unless an MCP tool explicitly wraps them later.
 
 ## Install & configure
 
@@ -61,6 +61,8 @@ All optional. Defaults give a zero-config in-process mode with no quota, no netw
 | `PRESIDIO_X402_MCP_REMOTE_API_KEY` | API key for the remote screening service | unset |
 | `PRESIDIO_X402_FINGERPRINT_KEY` | 32-byte hex key for cross-process replay detection | unset (per-process) |
 | `PRESIDIO_X402_CHAIN_KEY` | 32-byte hex key for cross-process audit-chain HMAC | unset (per-process) |
+| `PRESIDIO_X402_REQUIRE_FINGERPRINT_KEY` | Fail startup if replay key is absent or invalid | unset |
+| `PRESIDIO_X402_REQUIRE_CHAIN_KEY` | Fail startup if audit-chain key is absent or invalid | unset |
 
 Generate cross-process keys with `openssl rand -hex 32`.
 
@@ -91,7 +93,7 @@ Detects and redacts PII in payment metadata. **No side effects** — safe to cal
 }
 ```
 
-`entities` (optional list of Presidio entity types) narrows detection to a whitelist. Field-length caps mirror the v0.4.0 wire contract: `resource_url ≤ 2048`, `description ≤ 4096`, `reason ≤ 4096` characters. Oversized inputs raise `ValueError`.
+`entities` (optional list of Presidio entity types) narrows detection to a whitelist. Field-length caps mirror the screening-api wire contract that remains stable through parent `0.7.x`: `resource_url ≤ 2048`, `description ≤ 4096`, `reason ≤ 4096` characters. Oversized inputs raise `ValueError`.
 
 ### `check_payment_policy(resource_url, amount_usd)`
 
@@ -196,7 +198,8 @@ The two servers are developed independently, on purpose — keeping the signals 
 ## Notes for developers
 
 - Logs go to stderr (MCP clients capture stderr). stdout is reserved for JSON-RPC frames.
-- The package is a thin adapter. All security logic lives in [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) — read its docs for the entity-type catalog, policy semantics, and audit-chain details.
+- The package is a thin adapter. All security logic lives in [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) — read its docs for the entity-type catalog, policy semantics, evidence-ref verification, SLO broker, and audit-chain details.
+- This MCP release intentionally exposes the same three tools as `0.1.1`; the compatibility update is dependency and metadata alignment with parent `0.7.x`, not a promotion of the full parent SLO/evidence surface into MCP.
 - When testing via `mcp-inspector --cli`, bare numeric `--tool-arg amount=1.50` is auto-coerced to a float and rejected by the schema. Real MCP clients send proper JSON types; the tool's `amount` argument is a string to preserve precision.
 - Local dev: `uv venv && uv pip install -e ".[dev]" && pytest tests/`.
 
