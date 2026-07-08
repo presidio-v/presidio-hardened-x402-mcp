@@ -24,6 +24,10 @@ The findings below are hardening opportunities, the most notable being the absen
 TLS-scheme enforcement on the remote screening endpoint and incomplete least-privilege
 configuration in CI.
 
+**Remediation update (2026-06-22):** Finding 4 is closed in `0.1.2` by pinning
+the parent runtime dependency to `presidio-hardened-x402>=0.7.0,<0.8.0` and
+regenerating `uv.lock` against parent `0.7.0`.
+
 | # | Severity | Finding |
 |---|----------|---------|
 | 1 | Medium | No `https://` scheme enforcement on `PRESIDIO_X402_MCP_REMOTE_BASE_URL` — PII + API key can leave the host in cleartext |

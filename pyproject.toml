@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "presidio-hardened-x402-mcp"
-version = "0.1.1"
-description = "MCP server exposing presidio-hardened-x402 PII screening, policy, and replay-guard tools to autonomous agents."
+version = "0.1.2"
+description = "MCP server exposing presidio-hardened-x402 pre-payment PII screening, policy, and replay-guard tools to autonomous agents."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -28,7 +28,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp[cli]>=1.27.2,<2.0.0",
-    "presidio-hardened-x402>=0.4.0",
+    "presidio-hardened-x402>=0.7.0,<0.8.0",
 ]
 
 [project.optional-dependencies]
@@ -39,8 +39,8 @@ dev = [
     "ruff>=0.4.0",
     "respx>=0.21.0",
 ]
-nlp = ["presidio-hardened-x402[nlp]>=0.4.0"]
-redis = ["presidio-hardened-x402[redis]>=0.4.0"]
+nlp = ["presidio-hardened-x402[nlp]>=0.7.0,<0.8.0"]
+redis = ["presidio-hardened-x402[redis]>=0.7.0,<0.8.0"]
 
 [project.scripts]
 presidio-hardened-x402-mcp = "presidio_x402_mcp.server:main"

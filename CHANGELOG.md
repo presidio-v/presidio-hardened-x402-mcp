@@ -6,9 +6,23 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.1.2] — 2026-06-22
+
 ### Added
 
 - README: "Combined snippet: preflight → screen → pay" subsection under Composability, showing the two-server MCP host config and the agent-side call sequence for composing [x402station-mcp](https://github.com/sF1nX/x402station-mcp) (endpoint safety) with this server (payload safety). Coordinated with the x402station-mcp maintainer; the two projects keep independent signals and reciprocal composition pointers, not mutual endorsements.
+
+### Changed
+
+- Bumped the parent library requirement to `presidio-hardened-x402>=0.7.0,<0.8.0`, matching the released v0.7.0 API surface and pre-1.0 companion-package pinning policy.
+- Refreshed README and `server.json` metadata to describe the MCP server as the pre-payment PII/policy/replay gate over the v0.7.x parent library. The tool surface remains intentionally unchanged: `screen_payment_metadata`, `check_payment_policy`, and `check_payment_replay`.
+- Documented parent v0.6.0 production key gates (`PRESIDIO_X402_REQUIRE_FINGERPRINT_KEY`, `PRESIDIO_X402_REQUIRE_CHAIN_KEY`) for deployments that must fail startup instead of using per-process keys.
+
+### Security
+
+- Revalidated the MCP wrapper against parent `presidio-hardened-x402` v0.7.0. The newer parent evidence-ref and SLO-broker surfaces are not exposed as MCP tools in this patch release, avoiding accidental payment authorization on raw telemetry.
 
 ## [0.1.1] — 2026-05-31
 
