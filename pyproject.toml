@@ -27,7 +27,7 @@ classifiers = [
     "Framework :: AsyncIO",
 ]
 dependencies = [
-    "mcp[cli]>=1.27.2,<2.0.0",
+    "mcp[cli]>=1.28.1,<2.0.0",
     "presidio-hardened-x402>=0.9.1,<0.10.0",
 ]
 
