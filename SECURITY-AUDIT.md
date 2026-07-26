@@ -28,6 +28,10 @@ configuration in CI.
 the parent runtime dependency to `presidio-hardened-x402>=0.7.0,<0.8.0` and
 regenerating `uv.lock` against parent `0.7.0`.
 
+**Dependency update (2026-07-26):** The bounded parent compatibility line advanced
+to `presidio-hardened-x402>=0.9.1,<0.10.0`, with the lockfile regenerated and
+audited against parent `0.9.1`.
+
 | # | Severity | Finding |
 |---|----------|---------|
 | 1 | Medium | No `https://` scheme enforcement on `PRESIDIO_X402_MCP_REMOTE_BASE_URL` — PII + API key can leave the host in cleartext |
@@ -75,6 +79,7 @@ refuse to enable remote mode rather than silently sending cleartext.
 
 ```python
 from urllib.parse import urlparse
+
 
 def _validate_remote_base_url(raw: str) -> str:
     parsed = urlparse(raw)

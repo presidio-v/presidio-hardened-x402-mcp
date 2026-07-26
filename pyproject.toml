@@ -28,19 +28,19 @@ classifiers = [
 ]
 dependencies = [
     "mcp[cli]>=1.27.2,<2.0.0",
-    "presidio-hardened-x402>=0.7.0,<0.8.0",
+    "presidio-hardened-x402>=0.9.1,<0.10.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
-    "pytest-cov>=5.0",
-    "anyio>=4.0",
-    "ruff>=0.4.0",
-    "respx>=0.21.0",
+    "pytest-cov>=7.1.0",
+    "anyio>=4.14.2",
+    "ruff>=0.16.0",
+    "respx>=0.23.1",
 ]
-nlp = ["presidio-hardened-x402[nlp]>=0.7.0,<0.8.0"]
-redis = ["presidio-hardened-x402[redis]>=0.7.0,<0.8.0"]
+nlp = ["presidio-hardened-x402[nlp]>=0.9.1,<0.10.0"]
+redis = ["presidio-hardened-x402[redis]>=0.9.1,<0.10.0"]
 
 [project.scripts]
 presidio-hardened-x402-mcp = "presidio_x402_mcp.server:main"

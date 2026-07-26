@@ -44,7 +44,7 @@ Out-of-scope (route to parent repo):
 - **Production key gates.** Set `PRESIDIO_X402_REQUIRE_FINGERPRINT_KEY=1` and `PRESIDIO_X402_REQUIRE_CHAIN_KEY=1` when cross-process replay or audit-chain continuity is required; the parent library will fail startup instead of falling back to per-process keys.
 - **HTTP-proxy mode trust boundary.** When `PRESIDIO_X402_MCP_REMOTE_BASE_URL` and `PRESIDIO_X402_MCP_REMOTE_API_KEY` are set, payment metadata leaves the agent host. The remote screening service is the new trust boundary; verify its TLS configuration and audit policy before enabling.
 - **Tool side effects.** `check_payment_policy` and `check_payment_replay` mutate state on every call (spend ledger / fingerprint cache). Replay an exact call only when you intend to consume the gate budget.
-- **SLO-payment surface.** The parent v0.7.0 `SLOPaymentBroker` is not exposed as an MCP tool in this release. Do not treat raw MCP-readable telemetry as payment authorization; use the parent Python API's signed `evidence-ref@1` verification path if you wire SLO-triggered capacity payments.
+- **SLO-payment surface.** The parent v0.9.1 `SLOPaymentBroker` is not exposed as an MCP tool in this release. Do not treat raw MCP-readable telemetry as payment authorization; use the parent Python API's signed `evidence-ref@1` verification path if you wire SLO-triggered capacity payments.
 
 ## Dependency Security
 
