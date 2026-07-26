@@ -10,13 +10,13 @@
 
 Pre-payment safety gate for x402 — agents call `screen_payment_metadata(...)`, `check_payment_policy(...)`, and `check_payment_replay(...)` before signing, catching PII, budget overruns, and duplicate payments before metadata or money leaves the agent host.
 
-Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned for parent `0.7.x` compatibility (`presidio-hardened-x402>=0.7.0,<0.8.0`).
+Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned for parent `0.9.x` compatibility (`presidio-hardened-x402>=0.9.1,<0.10.0`).
 
 ## Why this exists
 
 x402 agentic payments routinely carry user-supplied free text — descriptions, memos, query-string parameters — straight through to merchants and facilitators. When an LLM agent generates that text, it can include PII the user never intended to share. Once the merchant logs it, retention is their decision, not yours.
 
-This MCP server gives agents a small default-deny gate *before* payment leaves the agent host. Three tools expose the parent library's stable pre-payment controls: PII redaction, spending policy, and replay detection. They are designed to compose with payment-execution and endpoint-safety MCP servers ([x402station](https://github.com/sF1nX/x402station-mcp), Coinbase x402, Sardis, ...), while newer parent-library surfaces such as `evidence-ref@1` verification and the v0.7.0 SLO broker stay in the Python library unless an MCP tool explicitly wraps them later.
+This MCP server gives agents a small default-deny gate *before* payment leaves the agent host. Three tools expose the parent library's stable pre-payment controls: PII redaction, spending policy, and replay detection. They are designed to compose with payment-execution and endpoint-safety MCP servers ([x402station](https://github.com/sF1nX/x402station-mcp), Coinbase x402, Sardis, ...), while newer parent-library surfaces such as `evidence-ref@1` verification and the v0.9.1 SLO broker stay in the Python library unless an MCP tool explicitly wraps them later.
 
 ## Install & configure
 
@@ -177,7 +177,7 @@ Agent flow before signing a payment (pseudocode — each step is one MCP tool ca
 # 1. endpoint safety: is the URL trustworthy? (x402station-mcp)
 pf = preflight(url)
 if not pf["ok"]:
-    abort(reason=pf["warnings"])              # decoy / zombie / dead / price-trap
+    abort(reason=pf["warnings"])  # decoy / zombie / dead / price-trap
 
 # 2. payload safety: redact PII before it leaves the host (presidio-x402)
 s = screen_payment_metadata(resource_url=url, description=description, reason="")
