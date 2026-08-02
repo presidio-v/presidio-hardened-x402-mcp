@@ -163,6 +163,29 @@ def _validate_lengths(resource_url: str, description: str, reason: str) -> None:
         raise ValueError(f"reason exceeds {_MAX_REASON} characters")
 
 
+def _audit_safe_url(resource_url: str) -> str:
+    """Redact *resource_url* before it is written to the audit log.
+
+    Tools 2 and 3 receive the URL unscreened — the agent is not obliged to have
+    called `screen_payment_metadata` first — so writing it verbatim would put the
+    very PII this server exists to catch into a file on disk, and one that
+    outlives the process. The parent library takes the same line, auditing the
+    redacted URL rather than the raw one (`core.py`, `resource_url=clean_url`).
+
+    Redaction failures must not break the payment path: the caller is mid-gate,
+    and an audit-formatting error is not a reason to refuse an otherwise valid
+    payment. On failure this degrades to a constant placeholder — never to the
+    raw URL.
+    """
+    try:
+        filt = PIIFilter(mode=_MODE, redaction_template="<{entity_type}>")
+        clean, _ = filt.scan_and_redact(resource_url)
+        return clean
+    except Exception:  # noqa: BLE001 - see docstring: never leak the raw URL
+        logger.warning("audit URL redaction failed; recording a placeholder", exc_info=True)
+        return "<REDACTION_FAILED>"
+
+
 def _collapse(hits: list, field: str) -> list[dict[str, Any]]:
     # Mirrors screening-api/src/screening_api/screening.py:_collapse (lines 38-48).
     counts: dict[str, int] = {}
@@ -311,6 +334,14 @@ async def screen_payment_metadata(
         reason,
         entities,
     )
+    entity_types = [f["entity_type"] for f in findings]
+    _AUDIT.emit(
+        "PII_REDACTED" if entity_types else "PAYMENT_ALLOWED",
+        # Already redacted by the scan above — never the caller's raw URL.
+        resource_url=url,
+        outcome="allowed",
+        pii_entities_found=entity_types,
+    )
     return {
         "redacted_resource_url": url,
         "redacted_description": desc,
@@ -339,14 +370,29 @@ async def check_payment_policy(resource_url: str, amount_usd: float) -> dict[str
         {"allowed": true} on success, or
         {"allowed": false, "reason": str, "limit_usd": float, "amount_usd": float}.
     """
+    safe_url = await asyncio.to_thread(_audit_safe_url, resource_url)
     try:
         await asyncio.to_thread(
             _POLICY.check_and_record,
             resource_url=resource_url,
             amount_usd=amount_usd,
         )
+        _AUDIT.emit(
+            "PAYMENT_ALLOWED",
+            resource_url=safe_url,
+            amount_usd=amount_usd,
+            outcome="allowed",
+        )
         return {"allowed": True}
     except PolicyViolationError as exc:
+        _AUDIT.emit(
+            "POLICY_BLOCKED",
+            resource_url=safe_url,
+            amount_usd=amount_usd,
+            outcome="blocked",
+            policy_limit_usd=exc.limit_usd,
+            error_message=str(exc),
+        )
         return {
             "allowed": False,
             "reason": str(exc),
@@ -384,10 +430,23 @@ async def check_payment_replay(
         {"is_replay": true, "fingerprint": "<hex>"} on duplicate.
     """
     fp = compute_fingerprint(resource_url, pay_to, amount, currency, deadline_seconds)
+    safe_url = await asyncio.to_thread(_audit_safe_url, resource_url)
     try:
         await asyncio.to_thread(_REPLAY.check_and_record, fp)
+        _AUDIT.emit(
+            "PAYMENT_ALLOWED",
+            resource_url=safe_url,
+            outcome="allowed",
+            replay_fingerprint=fp,
+        )
         return {"is_replay": False, "fingerprint": fp}
     except ReplayDetectedError:
+        _AUDIT.emit(
+            "REPLAY_BLOCKED",
+            resource_url=safe_url,
+            outcome="blocked",
+            replay_fingerprint=fp,
+        )
         return {"is_replay": True, "fingerprint": fp}
 
 
