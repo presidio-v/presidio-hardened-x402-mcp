@@ -596,7 +596,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -1188,7 +1188,7 @@ wheels = [
 
 [[package]]
 name = "presidio-hardened-x402"
-version = "0.9.1"
+version = "0.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1200,9 +1200,9 @@ dependencies = [
     { name = "setuptools" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/3e/13d5eb0354df4ee3dcf8e084f7356064ec04052cd6405542faf10727cbeb/presidio_hardened_x402-0.9.1.tar.gz", hash = "sha256:29612db59ec082b01899c1e9450b6ae3eae06b8102a5567cdb44e01f20c5d89f", size = 481122, upload-time = "2026-07-14T16:51:05.532Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/50/feb3c7d87053c3cce0e08cce36ad64fdae903d141550ac369ab1b541d8df/presidio_hardened_x402-0.11.1.tar.gz", hash = "sha256:02f291b6537fc7e981c0a056671a20a1c7afb83e86ebaf4dd8d7b5c357638715", size = 606857, upload-time = "2026-08-02T11:15:49.073Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/79/c6456c28ac0b60983bde86d2054662a904a2ba1992d34ae1329b9154d230/presidio_hardened_x402-0.9.1-py3-none-any.whl", hash = "sha256:57f0c0c0fae5cc9eaa8daf5af2444d669e9ca5c9f7cf52757ae2dd6f063cd38f", size = 133745, upload-time = "2026-07-14T16:51:03.86Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/45/3b65e892d51908724ac8dfd96c035b9417d96e7b10a1b0fb7265e43455fe/presidio_hardened_x402-0.11.1-py3-none-any.whl", hash = "sha256:f36aa9d691f23c43734231befa85b8d16f51d19889158b38d9fcf36c5753d953", size = 166178, upload-time = "2026-08-02T11:15:47.471Z" },
 ]
 
 [package.optional-dependencies]
@@ -1240,11 +1240,11 @@ redis = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", marker = "extra == 'dev'", specifier = ">=4.14.2" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.27.2,<2.0.0" },
-    { name = "presidio-hardened-x402", specifier = ">=0.9.1,<0.10.0" },
-    { name = "presidio-hardened-x402", extras = ["nlp"], marker = "extra == 'nlp'", specifier = ">=0.9.1,<0.10.0" },
-    { name = "presidio-hardened-x402", extras = ["redis"], marker = "extra == 'redis'", specifier = ">=0.9.1,<0.10.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.28.1,<2.0.0" },
+    { name = "presidio-hardened-x402", specifier = ">=0.11.1,<0.12.0" },
+    { name = "presidio-hardened-x402", extras = ["nlp"], marker = "extra == 'nlp'", specifier = ">=0.11.1,<0.12.0" },
+    { name = "presidio-hardened-x402", extras = ["redis"], marker = "extra == 'redis'", specifier = ">=0.11.1,<0.12.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "respx", marker = "extra == 'dev'", specifier = ">=0.23.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.0" },
