@@ -32,6 +32,26 @@ regenerating `uv.lock` against parent `0.7.0`.
 to `presidio-hardened-x402>=0.9.1,<0.10.0`, with the lockfile regenerated and
 audited against parent `0.9.1`.
 
+**Security-relevant dependency update (2026-08-02):** The parent line advanced to
+`presidio-hardened-x402>=0.11.1,<0.12.0`. This one closes a real exposure rather
+than tracking a release: parent releases up to and including v0.11.0 carried a
+**percent-encoding redaction bypass** — `PIIFilter` detected 0 of 6 percent-encoded
+email forms, so an address arriving as `alice.martin%40example.com` passed through
+unredacted. `screen_payment_metadata` scans `resource_url`, which is by
+construction a URL and therefore the likeliest field to carry an encoded address,
+so this server was among the most exposed consumers of the bug.
+
+The upper bound `<0.10.0` is why no Dependabot PR ever proposed the fix — the
+ceiling excluded every release that contained it. When pinning a bounded parent
+line, a security fix in a later minor is invisible to dependency automation;
+the compatibility guard in `tests/test_parent_compatibility.py` now documents the
+0.11.1 floor and why it must not be lowered.
+
+Verified against parent `0.11.1`: all 12 imported parent symbols resolve, the full
+suite passes, and `tests/test_screen_payment_metadata.py::TestPercentEncodedPII`
+asserts the encoded forms now redact — those four cases fail against parent
+`0.9.1`, so the guard is a real regression test rather than a restatement.
+
 | # | Severity | Finding |
 |---|----------|---------|
 | 1 | Medium | No `https://` scheme enforcement on `PRESIDIO_X402_MCP_REMOTE_BASE_URL` — PII + API key can leave the host in cleartext |

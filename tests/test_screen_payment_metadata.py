@@ -182,3 +182,43 @@ class TestRemoteMode:
         )
         assert result["error"] == "unavailable"
         assert result["mode"] == "remote"
+
+
+class TestPercentEncodedPII:
+    """The parent floor of 0.11.1 exists for this.
+
+    Through parent v0.11.0 the filter missed percent-encoded PII entirely, so an
+    address arriving as `alice%40example.com` in a resource URL was handed back
+    to the agent unredacted. `resource_url` is by construction a URL, which makes
+    it the likeliest place for that encoding to show up. These tests fail against
+    any parent below 0.11.1.
+    """
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://api.example.com/u/alice.martin%40example.com/exports",
+            "https://api.example.com/records?user=alice.martin%40example.com",
+            "https://api.example.com/u/alice%2Emartin%40example%2Ecom",
+            "https://api.example.com/u/alice.martin%2540example.com",
+        ],
+    )
+    async def test_percent_encoded_email_is_detected_and_redacted(self, url):
+        result = await screen_payment_metadata(resource_url=url, description="", reason="")
+        assert any(
+            f["entity_type"] == "EMAIL_ADDRESS" and f["field"] == "resource_url"
+            for f in result["entities_found"]
+        ), f"percent-encoded address survived screening: {url}"
+        assert "alice" not in result["redacted_resource_url"]
+
+    @pytest.mark.anyio
+    async def test_benign_escapes_are_not_rewritten(self):
+        """Decoding is for matching only — the agent gets its own bytes back.
+
+        `%2F` is not `/`; rewriting escapes would change the URL's meaning.
+        """
+        url = "https://api.example.com/a%2Fb/search?q=hello%20world"
+        result = await screen_payment_metadata(resource_url=url, description="", reason="")
+        assert result["entities_found"] == []
+        assert result["redacted_resource_url"] == url
