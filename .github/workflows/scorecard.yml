@@ -6,6 +6,10 @@ name: Scorecard supply-chain security
 # dip below target is triaged into the risk register.
 
 on:
+  # Manual trigger: lets a maintainer re-measure immediately after changing an
+  # input Scorecard reads (branch protection, the SCORECARD_TOKEN secret, a new
+  # release) instead of waiting for the Monday run.
+  workflow_dispatch:
   # Re-run when branch-protection settings change (a Scorecard input).
   branch_protection_rule:
   schedule:
