@@ -8,8 +8,39 @@ on:
   schedule:
     - cron: "30 5 * * 1"
 
+# Least privilege by default (audit finding 2 / Scorecard Token-Permissions).
+# Jobs needing more re-declare it; a job-level block overrides this one.
+permissions:
+  contents: read
+
 jobs:
+  codeql:
+    # Audit finding 8: this workflow was named "CodeQL" but ran only Bandit, so
+    # no CodeQL analysis existed and nothing reached GitHub code scanning. Both
+    # tools now run — they catch different things, and Bandit's findings are not
+    # a substitute for dataflow analysis.
+    name: CodeQL (Python)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # required to upload SARIF to code scanning
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        with:
+          category: "/language:python"
+
   analyze:
+    # Name kept verbatim: "Analyze (Python)" is a required status check on main.
+    # Renaming it would leave every PR waiting on a context that never reports.
     name: Analyze (Python)
     runs-on: ubuntu-latest
     permissions:
