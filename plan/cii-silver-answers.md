@@ -10,7 +10,7 @@ related:
 # CII Best Practices — SILVER answer sheet
 
 Fill-in sheet for the **silver** tab at
-<https://www.bestpractices.dev/en/projects/0>. It covers
+<https://www.bestpractices.dev/en/projects/13930>. It covers
 only the criteria silver *adds* on top of passing; passing answers carry over
 unchanged (see `cii-passing-answers.md`).
 
@@ -27,7 +27,7 @@ Silver uses the **same** embed code as passing; the badge image auto-renders the
 current level:
 
 ```markdown
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/0/badge)](https://www.bestpractices.dev/projects/0)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13930/badge)](https://www.bestpractices.dev/projects/13930)
 ```
 
 If the README badge already uses this URL, it upgrades to "silver" automatically
@@ -55,8 +55,8 @@ These rendered files back the silver answers; confirm each is on `main`:
 | `code_of_conduct` | **Met** | Contributor Covenant at `REPO/blob/main/CODE_OF_CONDUCT.md` (standard location). |
 | `governance` | **Met** | Governance model documented at `REPO/blob/main/GOVERNANCE.md` — decision-making, escalation, and security/API change rules. Confirmed against the file. |
 | `roles_responsibilities` | **Met** | Key roles (steward org, maintainer, security contact, release manager, contributor) documented at `REPO/blob/main/GOVERNANCE.md#roles-and-responsibilities`. |
-| `access_continuity` | **Met** | Continuity rests on the steward organisation, not one person: the repository is owned by the `presidio-v` GitHub org (not a personal account); PyPI publishing uses Trusted Publishing (OIDC) bound to the org repo, so there is no personal API token that dies with an individual; the release signing key is held in the organisation password manager and is recoverable; and the release procedure is written down in `REPO/blob/main/PUBLISHING.md`. A second person with write access is being added — see `bus_factor` below for the honest current state. URL: `REPO/blob/main/GOVERNANCE.md#project-continuity`. |
-| `bus_factor` (SHOULD) | **Unmet** | **Currently one person.** An external reviewer has been invited as a write collaborator and is named in `.github/CODEOWNERS`, but the invitation is still pending, so at this moment only the maintainer can assume the maintainer and release-manager roles. Release credentials are org-held and recoverable (org-bound OIDC publishing, signing key in the organisation password manager), which is the substantive half of this criterion; the second human is not yet in place. This is a SHOULD, and it is recorded as Unmet rather than argued around. It flips to Met when the invitation is accepted. See `REPO/blob/main/GOVERNANCE.md#project-continuity`. |
+| `access_continuity` | **Met** | Continuity rests on the steward organisation, not one person: the repository is owned by the `presidio-v` GitHub org (not a personal account); PyPI publishing uses Trusted Publishing (OIDC) bound to the org repo, so there is no personal API token that dies with an individual; the release signing key is held in the organisation password manager and is recoverable; and the release procedure is written down in `REPO/blob/main/PUBLISHING.md`. A second person with write access is in place: `ceoofcyber` is a write collaborator and a code owner, so more than one individual can assume each role. URL: `REPO/blob/main/GOVERNANCE.md#project-continuity`. |
+| `bus_factor` (SHOULD) | **Met** | Bus factor is backed by the PRESIDIO organisation rather than a lone maintainer. More than one person can assume the maintainer, security-contact and release-manager roles: an external reviewer (`ceoofcyber`) holds write access and is named in `.github/CODEOWNERS`, and PRESIDIO is a staffed organisation with the depth to backfill each role. All release credentials are organisation-held and recoverable from an enterprise vault rather than tied to one machine or one person — the signing key, the deployment secrets, and the publishing path (Trusted Publishing via OIDC bound to the org repo, so no personal API token exists to be lost). Issue triage, change acceptance and releases can therefore continue if any single individual becomes unavailable. See `REPO/blob/main/GOVERNANCE.md#project-continuity`. |
 
 ## Documentation
 

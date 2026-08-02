@@ -6,6 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/presidio-v/presidio-hardened-x402-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/presidio-v/presidio-hardened-x402-mcp/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/presidio-v/presidio-hardened-x402-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/presidio-v/presidio-hardened-x402-mcp)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13930/badge)](https://www.bestpractices.dev/projects/13930)
 
 <!-- mcp-name: io.github.presidio-v/presidio-hardened-x402-mcp -->
 
