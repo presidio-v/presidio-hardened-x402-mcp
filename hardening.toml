@@ -1,0 +1,24 @@
+# hardening.toml — presidio-hardened-x402-mcp
+#
+# Render input for the presidio-hardened-repo skill. See that skill's
+# manifest.schema.json for the field contract.
+
+[project]
+name = "presidio-hardened-x402-mcp"
+org = "presidio-v"
+package = "presidio_x402_mcp"
+description = "MCP server exposing presidio-hardened-x402 pre-payment PII screening, policy, and replay-guard tools to autonomous agents."
+language = "python"
+tier = "silver"
+
+[people]
+maintainer = "vstantch"
+reviewer = "ceoofcyber"
+security_contact = "security@presidio-group.eu"
+
+[legal]
+copyright_holder = "PRESIDIO Group"
+license = "MIT"
+
+[badge]
+bestpractices_id = 0

@@ -5,6 +5,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/presidio-v/presidio-hardened-x402-mcp.svg)](https://github.com/presidio-v/presidio-hardened-x402-mcp/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/presidio-v/presidio-hardened-x402-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/presidio-v/presidio-hardened-x402-mcp/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/presidio-v/presidio-hardened-x402-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/presidio-v/presidio-hardened-x402-mcp)
 
 <!-- mcp-name: io.github.presidio-v/presidio-hardened-x402-mcp -->
 
@@ -224,3 +225,27 @@ MIT. See [LICENSE](LICENSE).
 
 This repository is developed under the Presidio hardened-family SDLC:
 <https://github.com/presidio-v/presidio-hardened-docs/blob/main/sdlc/sdlc-report.md>.
+
+## Roadmap (next 12 months)
+
+- **Now / in flight** — OpenSSF Best Practices **silver** and a Scorecard above 7:
+  governance docs, a real CodeQL job alongside Bandit, least-privilege workflow
+  tokens, and Atheris fuzzing of the configuration validators. Closing the
+  remaining findings in [`SECURITY-AUDIT.md`](SECURITY-AUDIT.md).
+- **Next** — a release carrying the raised parent floor, so the published package
+  no longer resolves a parent with the percent-encoding redaction bypass.
+  Hash-pinned CI dependencies, ideally as a family-wide change rather than in
+  this repo alone.
+- **Later** *(under evaluation)* — signed releases with build provenance; tracking
+  the MCP specification as it stabilises; exposing the parent library's
+  `capability-grant@1` enforcement as a fourth tool, if agent demand justifies the
+  added surface.
+
+## Governance, Architecture, Security
+
+- [Governance](GOVERNANCE.md) — roles, decision process, and how to become a maintainer.
+- [Architecture](ARCHITECTURE.md) — components, trust boundaries, and the core processing path.
+- [Assurance case](ASSURANCE.md) — the security claims and the evidence backing each one.
+- [Security policy](SECURITY.md) — supported versions and how to report a vulnerability.
+- [Contributing](CONTRIBUTING.md) — review bar, test policy, and verification commands.
+- [Stability guarantees](SEMVER.md) — what counts as the public API and what may not change.
