@@ -39,6 +39,12 @@ dev = [
     "ruff>=0.16.0",
     "respx>=0.23.1",
 ]
+fuzz = [
+    # Atheris 3.x dropped Python 3.10 (last 3.10 wheel: 2.3.0); the marker keeps
+    # the extra resolvable across the full support matrix while fuzz CI pins 3.12.
+    # There is also no macOS wheel, so this runs in Linux CI only.
+    'atheris>=3.0; python_version >= "3.11"',
+]
 nlp = ["presidio-hardened-x402[nlp]>=0.11.1,<0.12.0"]
 redis = ["presidio-hardened-x402[redis]>=0.11.1,<0.12.0"]
 

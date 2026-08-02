@@ -9,6 +9,11 @@ on:
     tags:
       - "v*.*.*"
 
+# Least privilege by default (audit finding 2 / Scorecard Token-Permissions).
+# Jobs needing more re-declare it; a job-level block overrides this one.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build distribution
