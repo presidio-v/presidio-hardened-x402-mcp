@@ -8,6 +8,39 @@ versioning follows [SemVer](https://semver.org/).
 
 No unreleased changes.
 
+## [0.1.3] — 2026-08-02
+
+### Security
+
+- **Raised the parent floor to `presidio-hardened-x402>=0.11.1,<0.12.0`.** Parent
+  releases through v0.11.0 carried a percent-encoding redaction bypass: `PIIFilter`
+  detected 0 of 6 percent-encoded email forms, so an address arriving as
+  `alice.martin%40example.com` passed through unredacted. `screen_payment_metadata`
+  scans `resource_url`, which is by construction a URL and therefore the likeliest
+  field to carry an encoded address — this server was among the most exposed
+  consumers. No Dependabot PR ever proposed the fix and none could have: the previous
+  pin's own `<0.10.0` ceiling excluded every release containing it.
+- **The remote screening endpoint must now be HTTPS** (audit finding 1, open since
+  2026-06-03). `PRESIDIO_X402_MCP_REMOTE_BASE_URL` was used verbatim, so an `http://`
+  value put pre-redaction PII and the `X-API-Key` on the wire in cleartext. Validation
+  runs at import and raises, so a misconfigured endpoint stops the server rather than
+  silently downgrading to in-process screening. Loopback keeps an `http` carve-out.
+- **Least-privilege workflow tokens** (audit finding 2) and **a real CodeQL job**
+  (audit finding 8 — `codeql.yml` was named for CodeQL but ran only Bandit, so no
+  CodeQL analysis existed and nothing reached code scanning).
+
+### Added
+
+- Atheris fuzz harness over the configuration validators, asserting the TLS invariant
+  on every accepted URL rather than only checking for crashes.
+- OpenSSF Best Practices silver document set: `GOVERNANCE.md`, `ARCHITECTURE.md`,
+  `ASSURANCE.md`, `CONTRIBUTING.md`, `SEMVER.md`, `CODE_OF_CONDUCT.md`, `CODEOWNERS`,
+  `allowed_signers`, and a Scorecard workflow.
+
+### Changed
+
+- `mcp[cli]` floor raised to `>=1.28.1`; `pytest` dev floor to `>=9.1.1`.
+
 ## [0.1.2] — 2026-06-22
 
 ### Added
