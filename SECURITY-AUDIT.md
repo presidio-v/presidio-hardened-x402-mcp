@@ -24,6 +24,18 @@ The findings below are hardening opportunities, the most notable being the absen
 TLS-scheme enforcement on the remote screening endpoint and incomplete least-privilege
 configuration in CI.
 
+**Remediation update (2026-08-02):** Finding **1 is closed**. `_validate_remote_base_url`
+in `server.py` refuses any `PRESIDIO_X402_MCP_REMOTE_BASE_URL` that is not `https://`,
+with a carve-out for loopback hosts (`localhost`, `127.0.0.1`, `::1`), where traffic
+never crosses a network. It runs at **import**, so a cleartext endpoint stops the
+server rather than being discovered at first tool call, and it **raises rather than
+falling back** to in-process screening — a silent downgrade would leave the operator
+believing metadata is screened remotely under their configured policy. Validation
+fires whenever the URL is set, not only when remote mode ends up enabled, so a missing
+API key cannot mask a bad URL. Covered by `tests/test_remote_url_validation.py`
+(19 tests), including prefix-match traps such as `http://localhost.evil.example.com`
+and a subprocess check that the server genuinely refuses to start.
+
 **Remediation update (2026-06-22):** Finding 4 is closed in `0.1.2` by pinning
 the parent runtime dependency to `presidio-hardened-x402>=0.7.0,<0.8.0` and
 regenerating `uv.lock` against parent `0.7.0`.

@@ -34,6 +34,7 @@ import json
 import logging
 import os
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -101,9 +102,46 @@ _REPLAY = ReplayGuard(
 )
 _AUDIT = AuditLog(writer=_audit_writer())
 
+# Loopback is exempt from the TLS requirement: traffic that never leaves the host
+# has no network path to intercept. Everything else must be https.
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _validate_remote_base_url(raw: str) -> str:
+    """Return *raw* if payment metadata may safely be sent to it, else raise.
+
+    Remote mode puts the *pre-redaction* ``resource_url`` / ``description`` /
+    ``reason`` in the request body and a long-lived key in the ``X-API-Key``
+    header. Over plain http both are cleartext on the wire, which inverts the
+    purpose of the tool — so a non-TLS endpoint is refused rather than used.
+
+    This fails closed at startup rather than at first call, and it raises rather
+    than quietly falling back to in-process screening: a silent downgrade would
+    leave the operator believing metadata is being screened remotely under their
+    configured policy. An `http://` typo should stop the server, not change what
+    it does.
+    """
+    parsed = urlparse(raw)
+    if parsed.scheme == "https":
+        return raw
+    if parsed.scheme == "http" and parsed.hostname in _LOOPBACK_HOSTS:
+        return raw
+    raise ValueError(
+        "PRESIDIO_X402_MCP_REMOTE_BASE_URL must use https:// — got "
+        f"{parsed.scheme or 'no scheme'!r}. Plain http is accepted only for "
+        f"loopback hosts ({', '.join(sorted(_LOOPBACK_HOSTS))}). Remote mode "
+        "transmits pre-redaction PII and the screening API key."
+    )
+
+
 # HTTP-proxy mode for tool 1 (screen_payment_metadata). Activated only when
 # both env vars are set; tools 2 and 3 always stay in-process.
 _REMOTE_BASE_URL: str | None = os.getenv("PRESIDIO_X402_MCP_REMOTE_BASE_URL")
+if _REMOTE_BASE_URL:
+    # Validated whenever the URL is set, not only when remote mode ends up
+    # enabled — a set-but-unsafe URL is a deployment defect either way, and
+    # catching it needs to happen before a missing API key masks it.
+    _REMOTE_BASE_URL = _validate_remote_base_url(_REMOTE_BASE_URL)
 _REMOTE_API_KEY: str | None = os.getenv("PRESIDIO_X402_MCP_REMOTE_API_KEY")
 _REMOTE_ENABLED: bool = bool(_REMOTE_BASE_URL and _REMOTE_API_KEY)
 _REMOTE_TIMEOUT = httpx.Timeout(10.0, connect=3.0)

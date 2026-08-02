@@ -57,7 +57,7 @@ All optional. Defaults give a zero-config in-process mode with no quota, no netw
 | `PRESIDIO_X402_MCP_REDIS_URL` | Use Redis for replay state instead of in-memory | unset |
 | `PRESIDIO_X402_MCP_AUDIT_PATH` | Append-only JSON-L audit log path; omit to disable | unset |
 | `PRESIDIO_X402_MCP_LOG_LEVEL` | `DEBUG` / `INFO` / `WARNING` / `ERROR` | `INFO` |
-| `PRESIDIO_X402_MCP_REMOTE_BASE_URL` | Enable HTTP-proxy mode for tool 1 — see Modes | unset |
+| `PRESIDIO_X402_MCP_REMOTE_BASE_URL` | Enable HTTP-proxy mode for tool 1 — see Modes. Must be `https://`; plain `http://` is accepted only for loopback and otherwise refuses to start | unset |
 | `PRESIDIO_X402_MCP_REMOTE_API_KEY` | API key for the remote screening service | unset |
 | `PRESIDIO_X402_FINGERPRINT_KEY` | 32-byte hex key for cross-process replay detection | unset (per-process) |
 | `PRESIDIO_X402_CHAIN_KEY` | 32-byte hex key for cross-process audit-chain HMAC | unset (per-process) |
