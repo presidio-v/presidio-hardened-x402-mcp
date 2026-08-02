@@ -83,11 +83,15 @@ the same dependency within one module.
 same pull request.** Bug fixes must include a regression test that fails before the fix and
 passes after it. This is enforced in review, and by the coverage gate.
 
-Coverage is measured with `pytest-cov`. The suite currently sits at **91% statement
-coverage** on `src/presidio_x402_mcp/`, comfortably above the 80% floor the project
-targets. There is no hard CI gate on the percentage yet; the enforced rule is the one
-above — functional changes ship with tests, bug fixes ship with a regression test that
-fails before the fix.
+Coverage is measured with `pytest-cov` and **enforced in CI**: the test job runs
+`--cov-fail-under=90`, so a pull request that drops statement coverage on
+`presidio_x402_mcp` below 90% fails. The suite currently sits at **91%**, which means the
+margin is thin — a change adding untested branches will trip the gate rather than
+merely lowering a number.
+
+Note that the floor is measured on **statement** coverage. Enabling branch coverage
+changes what the same threshold means (it measured 89% blended when tried), so do not
+turn it on without moving the gate deliberately and in its own change.
 
 
 ### Security-sensitive changes
