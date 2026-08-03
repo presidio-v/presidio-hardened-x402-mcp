@@ -6,7 +6,22 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- **`httpx` is now a declared direct dependency.** `server.py` imports it for remote
+  screening mode but relied on the MCP SDK to supply it transitively. mcp 2.x moved its
+  HTTP stack to `httpx2`, so a clean install against that SDK major would have had no
+  `httpx` module at all and the server would have failed at import. Declaring it removes
+  the dependence on another package's private choices. Behaviour is unchanged on mcp 1.x.
+- **Corrected the parent-compatibility note in the README**, which still advertised
+  `presidio-hardened-x402>=0.9.1,<0.10.0` after v0.1.3 raised the real pin to
+  `>=0.11.1,<0.12.0` — the release that closed the percent-encoding redaction bypass.
+  A reader checking whether they were exposed would have drawn the wrong conclusion.
+- **Widened the unwrapped-parent-surface note in `SECURITY.md`.** It named only the
+  v0.9.1 `SLOPaymentBroker`, so it went stale as the parent grew. It now states the
+  general rule — clearing the three MCP tools is not evidence any other parent control
+  ran — and calls out the v0.11.0 `CapabilityEnforcer` in particular: these tools are a
+  budget gate, not an authorization gate, and must not be mistaken for one.
 
 ## [0.1.3] — 2026-08-02
 
