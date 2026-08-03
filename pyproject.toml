@@ -28,6 +28,10 @@ classifiers = [
 ]
 dependencies = [
     "mcp[cli]>=1.28.1,<2.0.0",
+    # Declared directly because server.py imports it for remote screening mode.
+    # It used to arrive transitively via mcp 1.x; mcp 2.x switched its own HTTP
+    # stack to httpx2, so the transitive guarantee is ending — see issue #44.
+    "httpx>=0.27,<1.0.0",
     "presidio-hardened-x402>=0.11.1,<0.12.0",
 ]
 
