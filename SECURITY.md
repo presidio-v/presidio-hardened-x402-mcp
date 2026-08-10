@@ -57,6 +57,25 @@ Out-of-scope (route to parent repo):
 - CodeQL / Bandit SAST runs per PR and on a weekly schedule
 - Secret-scanning (Gitleaks) runs per PR
 
+### Active audit waivers
+
+Waivers are declared as explicit `--ignore-vuln` IDs in the `audit` job of
+`.github/workflows/ci.yml`. Scoping them to single advisory IDs means an
+unrelated advisory in the same package still blocks merge.
+
+| Advisory | Package | Rationale | Removal condition |
+|---|---|---|---|
+| PYSEC-2026-3552 | `cryptography` 48.0.1 | PKCS#7 `EnvelopedData` decryption oracle. Not reachable: nothing in the dependency tree imports `cryptography.hazmat.primitives.serialization.pkcs7`. Fix lands in 50.0.0, which the tree cannot resolve. | `presidio-anonymizer` allows `cryptography>=49` |
+| PYSEC-2026-3553 | `cryptography` 48.0.1 | X.509 chain-building exponential-blowup DoS. Not reachable: nothing imports `cryptography.x509.verification`. Fix lands in 49.0.0. | as above |
+| PYSEC-2026-3554 | `cryptography` 48.0.1 | X.509 name-constraint wildcard escape. Same unreachable surface as PYSEC-2026-3553. Fix lands in 49.0.0. | as above |
+
+`cryptography` is a transitive dependency only. `presidio-anonymizer` 2.2.364
+(latest at time of waiver) requires `cryptography>=48.0.1,<49.0.0`, so no
+resolvable version of this tree contains the fixes. This tree uses
+`cryptography` solely for AES-CBC (the `presidio-anonymizer` Encrypt operator)
+and Ed25519 signature verification (`presidio-x402`) — neither touches the
+affected code paths.
+
 ## Software Development Lifecycle
 
 This package is developed under the Presidio hardened-family SDLC. The full SDLC report — scope, standards mapping, threat-model gates, and supply-chain controls — is at <https://github.com/presidio-v/presidio-hardened-docs/blob/main/sdlc/sdlc-report.md>.
