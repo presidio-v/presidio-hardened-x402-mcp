@@ -14,6 +14,20 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # github/codeql-action/init and .../analyze are distinct dependencies to
+    # Dependabot, but the action requires both halves to run at the same
+    # version. Ungrouped, each arrives as its own PR and *both* fail with
+    #   Loaded a configuration file for version 'X', but running version 'Y'
+    # since neither branch bumps the other half. Merging them one at a time
+    # leaves main broken in between, so they can only land together.
+    # This bit twice: v4.37.4 -> v4.37.6 (#46/#48) and v4.37.6 -> v4.37.7
+    # (#51/#52). Grouping makes Dependabot open a single PR for the pair.
+    # Deliberately scoped to codeql-action so unrelated action bumps keep
+    # arriving as individually reviewable PRs.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     labels:
       - "dependencies"
       - "github-actions"
