@@ -6,6 +6,16 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Migrated to MCP SDK 2.x; `mcp[cli]` requirement is now `>=2.0.0,<3.0.0`** (#44).
+  `FastMCP` no longer exists in mcp 2.x; the server is now built on
+  `mcp.server.mcpserver.MCPServer`, whose `tool()` and `run(transport="stdio")`
+  surfaces are unchanged, so the three tools and their wire behaviour carry over
+  as-is. The in-process e2e test was rewritten on `mcp.Client`, replacing the
+  removed `mcp.shared.memory.create_connected_server_and_client_session`. Dropping
+  mcp 1.x support is a dependency-contract change and warrants a 0.2.0 release.
+
 ### Fixed
 
 - **`httpx` is now a declared direct dependency.** `server.py` imports it for remote

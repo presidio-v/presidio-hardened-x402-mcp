@@ -18,7 +18,7 @@ This package is a **thin MCP adapter**. All security primitives live in the pare
 
 ### Mandatory transport and configuration
 
-4. **Stdio MCP transport** via `mcp.server.fastmcp.FastMCP`. JSON-RPC over stdin/stdout per MCP spec.
+4. **Stdio MCP transport** via `mcp.server.mcpserver.MCPServer`. JSON-RPC over stdin/stdout per MCP spec.
 
 5. **Strict stdout discipline.** No `print()` or unguarded writes to stdout (would corrupt JSON-RPC framing). All diagnostic output goes through `logging` (stderr default). Default audit writer is `NullAuditWriter` to eliminate accidental stdout contamination.
 

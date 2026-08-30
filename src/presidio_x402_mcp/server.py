@@ -1,4 +1,4 @@
-"""FastMCP server for presidio-hardened-x402 — PII screening for x402 agents.
+"""MCP server for presidio-hardened-x402 — PII screening for x402 agents.
 
 Tools (default in-process mode):
   - screen_payment_metadata  — PII scan of payment metadata (no side effects)
@@ -37,7 +37,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from presidio_x402 import (
     AuditLog,
     FileAuditWriter,
@@ -146,7 +146,7 @@ _REMOTE_API_KEY: str | None = os.getenv("PRESIDIO_X402_MCP_REMOTE_API_KEY")
 _REMOTE_ENABLED: bool = bool(_REMOTE_BASE_URL and _REMOTE_API_KEY)
 _REMOTE_TIMEOUT = httpx.Timeout(10.0, connect=3.0)
 
-mcp = FastMCP("presidio-x402")
+mcp = MCPServer("presidio-x402")
 
 
 # ---------------------------------------------------------------------------
