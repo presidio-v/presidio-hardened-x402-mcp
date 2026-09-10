@@ -159,6 +159,8 @@ agent intent: pay https://api.foo.com/x with 1.50 USDC
 
 `screen_payment_metadata` is read-only and safe to interleave anywhere. The policy and replay gates record state on call — sequence them immediately before payment.
 
+**What none of these gates can see: a request body the agent made up.** The three tools screen the 402 challenge's metadata and the spend; they never see the body the agent sends to a POST route. Independent measurement of the x402 and MPP catalogues (probe402, MCRI #001, 1 September 2026) found 1,521 of 8,056 listed POST routes — 18.9% — publish no usable request example, and 72% of those still return a payable quote at the wall. A route like that is *listed*, *priced*, and *not machine-executable from the published contract*. An agent that fills the gap by synthesising a body is guessing, and a guessed body is where user data enters the request unscreened. Posture: if the catalogue entry carries no request example or schema, stop at the 402 quote and surface it; do not invent a body to get past the wall. Put that rule in the agent's instructions — it is a decision the agent makes before any of these tools run.
+
 ### Combined snippet: preflight → screen → pay
 
 Endpoint-safety and payload-safety are independent signals — calling both is what you actually want before signing. Configure the two MCP servers side-by-side:

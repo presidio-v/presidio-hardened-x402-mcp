@@ -6,6 +6,14 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+
+- README *Composability*: state what the three gates cannot see — a request body
+  the agent synthesised for a POST route whose catalogue entry publishes no
+  request example — and the posture (stop at the 402 quote; do not invent a
+  body). Cites the MCRI #001 measurement (18.9% of listed POST routes, 1 Sep
+  2026) that makes the case non-hypothetical.
+
 ### Changed
 
 - **Migrated to MCP SDK 2.x; `mcp[cli]` requirement is now `>=2.0.0,<3.0.0`** (#44).
