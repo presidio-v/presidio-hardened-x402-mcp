@@ -66,6 +66,23 @@ ls -la dist/
 unzip -l dist/presidio_hardened_x402_mcp-*.whl
 ```
 
+## MCP Registry
+
+`release.yml` calls `mcp-registry.yml` after the PyPI publish, which pushes
+`server.json` to `registry.modelcontextprotocol.io` with GitHub OIDC. OIDC grants
+`io.github.presidio-v/*` from the repository owner. Do not rely on the local
+`mcp-publisher login github` device flow for this namespace: it currently mints
+tokens without org namespaces even for org Owners
+(modelcontextprotocol/registry#1527, #1649).
+
+- `server.json` `version` must equal the PyPI version, and `description` must be
+  at most 100 characters (`mcp-publisher validate` checks both against the live
+  registry).
+- To republish without a release: **Actions → Publish to MCP Registry → Run
+  workflow** on `main`. It publishes the `server.json` on that ref.
+- `mcp-publisher` is pinned by version and sha256 in `mcp-registry.yml`; bump both
+  together from the release's `registry_<ver>_checksums.txt`.
+
 ## Rollback / yank
 
 PyPI does not allow re-uploading the same version. To pull a broken release:
