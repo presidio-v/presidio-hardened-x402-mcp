@@ -6,6 +6,14 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Releases reach the MCP Registry again.** The registry had stayed on 0.1.1:
+  `server.json`'s description was 102 characters against a 100-character limit
+  (HTTP 422), and the device login stopped granting the `io.github.presidio-v`
+  namespace. The description is shortened, and a new `mcp-registry.yml` workflow
+  publishes with GitHub OIDC after every PyPI release, or on demand.
+
 ## [0.2.0] — 2026-09-29
 
 ### Documentation
