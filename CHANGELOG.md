@@ -6,6 +6,8 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-29
+
 ### Documentation
 
 - README *Composability*: state what the three gates cannot see — a request body
@@ -16,6 +18,12 @@ versioning follows [SemVer](https://semver.org/).
 
 ### Changed
 
+- **Parent ceiling widened to `presidio-hardened-x402>=0.11.1,<0.13.0`.** Parent
+  0.12.0 adds opt-in pay-to pinning and a quote-drift limit and raises the
+  `cryptography` and `anyio` floors; none of the parent symbols this server
+  imports changed. The `>=0.11.1` security floor stays. `uv.lock` now resolves
+  parent 0.12.0, which also moves the locked `cryptography` from 49.0.0 to 50.0.1
+  (CVE-2026-69247).
 - **Migrated to MCP SDK 2.x; `mcp[cli]` requirement is now `>=2.0.0,<3.0.0`** (#44).
   `FastMCP` no longer exists in mcp 2.x; the server is now built on
   `mcp.server.mcpserver.MCPServer`, whose `tool()` and `run(transport="stdio")`

@@ -12,7 +12,7 @@
 
 Pre-payment safety gate for x402 — agents call `screen_payment_metadata(...)`, `check_payment_policy(...)`, and `check_payment_replay(...)` before signing, catching PII, budget overruns, and duplicate payments before metadata or money leaves the agent host.
 
-Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned for parent `0.11.x` compatibility (`presidio-hardened-x402>=0.11.1,<0.12.0`). The `>=0.11.1` floor is a security floor, not a preference — it is the release that closed the percent-encoded PII redaction bypass.
+Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned for parent `0.11.x`–`0.12.x` compatibility (`presidio-hardened-x402>=0.11.1,<0.13.0`). The `>=0.11.1` floor is a security floor, not a preference — it is the release that closed the percent-encoded PII redaction bypass.
 
 ## Why this exists
 

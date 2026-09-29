@@ -12,7 +12,7 @@ def _minor_tuple(raw: str) -> tuple[int, int, int]:
     return int(major), int(minor), int(patch)
 
 
-def test_parent_library_is_v011_compatible():
+def test_parent_library_is_within_supported_range():
     """The floor is 0.11.1 specifically, not 0.11.0.
 
     0.11.1 is the release in which ``PIIFilter`` stopped missing percent-encoded
@@ -22,7 +22,7 @@ def test_parent_library_is_v011_compatible():
     bypass. Do not lower this floor.
     """
     parent_version = _minor_tuple(version("presidio-hardened-x402"))
-    assert (0, 11, 1) <= parent_version < (0, 12, 0)
+    assert (0, 11, 1) <= parent_version < (0, 13, 0)
 
 
 def test_parent_symbols_are_importable():
