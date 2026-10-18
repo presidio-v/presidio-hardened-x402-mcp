@@ -24,6 +24,16 @@ versioning follows [SemVer](https://semver.org/).
   body). Cites the MCRI #001 measurement (18.9% of listed POST routes, 1 Sep
   2026) that makes the case non-hypothetical.
 
+### Added
+
+- **Tools emit audit events** (#40). The `AuditLog` was constructed at startup
+  but never written. All three tools now call `_AUDIT.emit()` for allowed and
+  blocked outcomes: `screen_payment_metadata` emits `PII_REDACTED` or
+  `PAYMENT_ALLOWED` in in-process mode, recording the already-redacted URL;
+  `check_payment_policy` emits `PAYMENT_ALLOWED` or `POLICY_BLOCKED`;
+  `check_payment_replay` emits `PAYMENT_ALLOWED` or `REPLAY_BLOCKED`. Tests assert
+  that no raw PII reaches the record.
+
 ### Changed
 
 - **Parent ceiling widened to `presidio-hardened-x402>=0.11.1,<0.13.0`.** Parent
@@ -141,4 +151,4 @@ Initial public release.
 ### Notes
 
 - Tools 2 and 3 (`check_payment_policy`, `check_payment_replay`) record state on every call. Invoke each exactly once, immediately before the actual payment.
-- Audit-event emission from tools is deferred to v0.2.0; the `AuditLog` instance is constructed at startup but tools do not currently call `_AUDIT.emit()`.
+- Audit-event emission from tools was deferred in this release: the `AuditLog` instance was constructed at startup but tools did not call `_AUDIT.emit()`. Shipped in 0.2.0.

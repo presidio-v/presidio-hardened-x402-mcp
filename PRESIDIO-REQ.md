@@ -2,7 +2,7 @@
 
 Requirements, feature deliberation, and versioning rationale for the MCP server that exposes [`presidio-hardened-x402`](https://github.com/presidio-v/presidio-hardened-x402) library capabilities to autonomous agents over the Model Context Protocol.
 
-This package is a **thin MCP adapter**. All security primitives live in the parent library; this document specifies how selected primitives are made available over stdio MCP transport. Version `0.1.2` is pinned to parent `presidio-hardened-x402>=0.7.0,<0.8.0`; it keeps the original three-tool MCP surface and does not expose the parent v0.7.0 SLO-payment broker as an MCP tool.
+This package is a **thin MCP adapter**. All security primitives live in the parent library; this document specifies how selected primitives are made available over stdio MCP transport. Version `0.2.0` is pinned to parent `presidio-hardened-x402>=0.11.1,<0.13.0`; it keeps the original three-tool MCP surface and does not expose the parent v0.7.0 SLO-payment broker as an MCP tool.
 
 ---
 
@@ -44,16 +44,16 @@ This package is a **thin MCP adapter**. All security primitives live in the pare
 - **Mandate verification / approval workflows.** Owned by Sardis-class governance MCPs (AP2 + spending mandates).
   *Rationale: Spending policy in the parent lib is sufficient for individual agents; mandate/approval workflows are governance-team scope.*
 
-- **Audit-event emission from tools.** Tools do not currently call `_AUDIT.emit()` per call. The `AuditLog` instance is constructed at startup and available for v0.2.0+ wiring.
+- **Audit-event emission from tools.** Deferred from v0.1.0, when tools did not call `_AUDIT.emit()`; delivered in v0.2.0 (see below).
   *Rationale: Audit semantics at the MCP-call boundary need a design pass — emitting only blocked events would be misleading; emitting allowed events on every call would be noisy without payment-context (the tool sees the check, not the payment that follows).*
 
 ---
 
 ## v0.2.0 Requirements (post-launch hardening)
 
-Scope driven by Phase-6 distribution outcomes (see [`plan/mcp-server-plan.md`](https://github.com/presidio-v/presidio-hardened-x402-internal/blob/main/plan/mcp-server-plan.md) in the internal repo). Tentative:
+Scope driven by post-launch distribution outcomes. Tentative:
 
-- Audit emission from tools (with rich context: which gate fired, what the tool returned, optional payment-id correlation)
+- **Delivered:** audit emission from tools. All three tools call `_AUDIT.emit()`, for allowed and blocked outcomes alike: `screen_payment_metadata` emits `PII_REDACTED` (entities found) or `PAYMENT_ALLOWED` in in-process mode, with the already-redacted URL; `check_payment_policy` emits `PAYMENT_ALLOWED` or `POLICY_BLOCKED`; `check_payment_replay` emits `PAYMENT_ALLOWED` or `REPLAY_BLOCKED` with the fingerprint. Remote-mode screening emits no local event. Payment-id correlation remains open.
 - Per-call entity-profile override (current `entities` whitelist is per-call but tied to startup `_MODE`; surface more flexibility)
 - `mypy --strict` in CI (parent SDLC §6 planned item)
 - OpenSSF Scorecard ≥ 7.0 weekly check (parent SDLC §6 supply-chain item)
