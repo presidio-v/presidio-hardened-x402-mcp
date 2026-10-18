@@ -203,7 +203,7 @@ The two servers are developed independently, on purpose — keeping the signals 
 
 - Logs go to stderr (MCP clients capture stderr). stdout is reserved for JSON-RPC frames.
 - The package is a thin adapter. All security logic lives in [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) — read its docs for the entity-type catalog, policy semantics, evidence-ref verification, SLO broker, and audit-chain details.
-- This MCP release intentionally exposes the same three tools as `0.1.1`; the compatibility update is dependency and metadata alignment with parent `0.7.x`, not a promotion of the full parent SLO/evidence surface into MCP.
+- This MCP release intentionally exposes the same three tools as `0.1.1`; later parent-compatibility updates (now `presidio-hardened-x402>=0.11.1,<0.13.0`) are dependency and metadata alignment, not a promotion of the full parent SLO/evidence/capability surface into MCP.
 - When testing via `mcp-inspector --cli`, bare numeric `--tool-arg amount=1.50` is auto-coerced to a float and rejected by the schema. Real MCP clients send proper JSON types; the tool's `amount` argument is a string to preserve precision.
 - Local dev: `uv venv && uv pip install -e ".[dev]" && pytest tests/`.
 
@@ -238,9 +238,7 @@ The controls measured for it, and any open gaps, are its row in the
   governance docs, a real CodeQL job alongside Bandit, least-privilege workflow
   tokens, and Atheris fuzzing of the configuration validators. Closing the
   remaining findings in [`SECURITY-AUDIT.md`](SECURITY-AUDIT.md).
-- **Next** — a release carrying the raised parent floor, so the published package
-  no longer resolves a parent with the percent-encoding redaction bypass.
-  Hash-pinned CI dependencies, ideally as a family-wide change rather than in
+- **Next** — hash-pinned CI dependencies, ideally as a family-wide change rather than in
   this repo alone.
 - **Later** *(under evaluation)* — signed releases with build provenance; tracking
   the MCP specification as it stabilises; exposing the parent library's
