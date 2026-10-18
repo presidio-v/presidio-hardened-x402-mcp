@@ -193,7 +193,7 @@ _REMOTE_TIMEOUT = httpx.Timeout(10.0, connect=3.0)
 
 _EVIDENCE_KEY_FILE_ENV = "PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE"
 # Same variable the parent's treasury-binding CLI reads, so one secret serves both.
-_EVIDENCE_KEY_ENV = "PRESIDIO_X402_EVIDENCE_KEY"
+_EVIDENCE_KEY_ENV = "PRESIDIO_X402_EVIDENCE_KEY"  # gitleaks:allow (variable name, not a secret)
 _DECISION_PATH_ENV = "PRESIDIO_X402_MCP_DECISION_PATH"
 _EVIDENCE_ALGORITHM_ENV = "PRESIDIO_X402_MCP_EVIDENCE_ALGORITHM"
 _EVIDENCE_SIGNER_ENV = "PRESIDIO_X402_MCP_EVIDENCE_SIGNER"
@@ -255,16 +255,15 @@ def _evidence_from_env() -> _EvidenceConfig | None:
                 f"signed payment-decision@1 evidence is not available: {reason}. "
                 f"Refusing to start because {_REQUIRE_EVIDENCE_ENV} is set."
             )
+        # The variable names are spelled out rather than interpolated from the
+        # *_KEY_* constants, so static analysis sees no key-named value reach a log.
         logger.log(
             level,
             "Signed payment-decision@1 evidence is DISABLED: %s. Gate decisions are "
-            "recorded only in the HMAC audit log. Set %s (or %s) and %s to enable it; "
-            "set %s=1 to refuse to start without it.",
+            "recorded only in the HMAC audit log. Set PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE "
+            "(or PRESIDIO_X402_EVIDENCE_KEY) and PRESIDIO_X402_MCP_DECISION_PATH to enable "
+            "it; set PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY=1 to refuse to start without it.",
             reason,
-            _EVIDENCE_KEY_FILE_ENV,
-            _EVIDENCE_KEY_ENV,
-            _DECISION_PATH_ENV,
-            _REQUIRE_EVIDENCE_ENV,
         )
         return None
 
