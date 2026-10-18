@@ -201,7 +201,7 @@ _EVIDENCE_KEY_ID_ENV = "PRESIDIO_X402_MCP_EVIDENCE_KEY_ID"  # gitleaks:allow
 _REQUIRE_EVIDENCE_ENV = "PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY"
 
 DEFAULT_EVIDENCE_SIGNER = "presidio-hardened-x402-mcp"
-_MIN_HMAC_SECRET_CHARS = 32
+_MIN_HMAC_LENGTH = 32
 #: Fields an MCP tool never sees (no wallet, no network, no raw 402 offer).
 _UNSPECIFIED = "unspecified"
 _OFFER_ABSENT = "not-presented"
@@ -291,9 +291,9 @@ def _evidence_from_env() -> _EvidenceConfig | None:
     algorithm = os.getenv(_EVIDENCE_ALGORITHM_ENV, "").strip() or "ed25519"
     signer = os.getenv(_EVIDENCE_SIGNER_ENV, "").strip() or DEFAULT_EVIDENCE_SIGNER
     key_id = os.getenv(_EVIDENCE_KEY_ID_ENV, "").strip() or None
-    if algorithm == "hmac-sha256" and len(key) < _MIN_HMAC_SECRET_CHARS:
+    if algorithm == "hmac-sha256" and len(key) < _MIN_HMAC_LENGTH:
         return disabled(
-            f"the hmac-sha256 secret is shorter than {_MIN_HMAC_SECRET_CHARS} characters",
+            f"the hmac-sha256 secret is shorter than {_MIN_HMAC_LENGTH} characters",
             logging.ERROR,
         )
     # Sign a probe once so a malformed key or unknown algorithm surfaces at
