@@ -6,6 +6,8 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-18
+
 ### Added
 
 - **Signed `payment-decision@1` evidence from every tool decision.** The HMAC
