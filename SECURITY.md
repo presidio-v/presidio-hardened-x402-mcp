@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.2.x   | ✓ (current) |
+| 0.3.x   | ✓ (current) |
+| 0.2.x   | security fixes only |
 | 0.1.x   | security fixes only (mcp SDK 1.x) |
 
 ## Reporting a Vulnerability
@@ -43,6 +44,7 @@ Out-of-scope (route to parent repo):
 - **stdout discipline.** stdio MCP servers MUST NOT write to stdout (corrupts JSON-RPC framing). All logs go to stderr via the `logging` module; the default audit writer is `NullAuditWriter`. Configuring `PRESIDIO_X402_MCP_AUDIT_PATH` routes audit records to a file (never stdout).
 - **Env-var injection.** All configuration is via `PRESIDIO_X402_MCP_*` env vars. Do not pass secrets via shell history or world-readable files; use the MCP client's `env:` block in its config file with appropriate file-system permissions.
 - **Production key gates.** Set `PRESIDIO_X402_REQUIRE_FINGERPRINT_KEY=1` and `PRESIDIO_X402_REQUIRE_CHAIN_KEY=1` when cross-process replay or audit-chain continuity is required; the parent library will fail startup instead of falling back to per-process keys.
+- **Decision-signing key.** Signed `payment-decision@1` records (0.3.0+) use the key in `PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE` (preferred; the server warns if the file is group- or world-readable) or `PRESIDIO_X402_EVIDENCE_KEY`. Use a key that signs decisions only — not a wallet key; the parent verifier rejects records whose signer is the payer. The key is probe-signed at startup, kept out of `repr`, and never logged; errors log the exception type only. Without a key, evidence is off with a startup WARNING; set `PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY=1` to fail startup instead. Distribute only the public key (trust store) to verifiers. Records contain no raw metadata — scheme and host, entity-type labels, and hashes.
 - **HTTP-proxy mode trust boundary.** When `PRESIDIO_X402_MCP_REMOTE_BASE_URL` and `PRESIDIO_X402_MCP_REMOTE_API_KEY` are set, payment metadata leaves the agent host. The remote screening service is the new trust boundary; verify its TLS configuration and audit policy before enabling.
 - **Tool side effects.** `check_payment_policy` and `check_payment_replay` mutate state on every call (spend ledger / fingerprint cache). Replay an exact call only when you intend to consume the gate budget.
 - **Unwrapped parent surfaces.** The three MCP tools cover the parent library's stable pre-payment controls — PII redaction, spending policy, replay detection — and nothing beyond them. Passing all three is not evidence that any other parent control ran. Reach these through the parent Python API, not through this server:
@@ -74,7 +76,8 @@ unrelated advisory in the same package still blocks merge.
 (latest at time of waiver) requires `cryptography>=48.0.1,<49.0.0`, so no
 resolvable version of this tree contains the fixes. This tree uses
 `cryptography` solely for AES-CBC (the `presidio-anonymizer` Encrypt operator)
-and Ed25519 signature verification (`presidio-x402`) — neither touches the
+and Ed25519 signing and verification (`presidio-x402`, including the MCP's
+decision records) — neither touches the
 affected code paths.
 
 ## Software Development Lifecycle

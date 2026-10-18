@@ -1,3 +1,3 @@
 """presidio-hardened-x402 MCP server package."""
 
-__version__ = "0.1.2"
+__version__ = "0.3.0"

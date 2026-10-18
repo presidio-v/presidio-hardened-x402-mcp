@@ -6,6 +6,29 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Signed `payment-decision@1` evidence from every tool decision.** The HMAC
+  audit log can be checked only by whoever holds the chain key; these records
+  can be checked by anyone with the public key. All three tools, on allow and
+  block, now build and sign a record through the parent library
+  (`build_payment_decision_content`, `build_decision_evidence`) and append it to
+  `PRESIDIO_X402_MCP_DECISION_PATH`, next to the audit log. Responses carry the
+  `decision_ref`; the two gates accept an optional `prior_decision_refs` list
+  (refs this process issued) to link one payment's decisions. Key from
+  `PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE` or the parent's
+  `PRESIDIO_X402_EVIDENCE_KEY`; `ed25519` or `hmac-sha256`. Without a key the
+  server behaves as 0.2.x and warns once at startup;
+  `PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY=1` refuses to start instead.
+  Parent range unchanged (`>=0.11.1,<0.13.0`): the tools carry no capability
+  parents, so nothing depends on the parent's unreleased top-level `parents`.
+
+### Changed
+
+- Version 0.3.0 (`pyproject.toml`, `__init__`). `server.json` stays at 0.2.0
+  until the release, so a manual registry publish cannot advertise an
+  unpublished version.
+
 ### Fixed
 
 - **Releases reach the MCP Registry again.** The registry had stayed on 0.1.1:

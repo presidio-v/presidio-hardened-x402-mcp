@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "presidio-hardened-x402-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server exposing presidio-hardened-x402 pre-payment PII screening, policy, and replay-guard tools to autonomous agents."
 readme = "README.md"
 license = "MIT"
