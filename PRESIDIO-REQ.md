@@ -51,7 +51,7 @@ This package is a **thin MCP adapter**. All security primitives live in the pare
 
 ## v0.2.0 Requirements (post-launch hardening)
 
-Scope driven by Phase-6 distribution outcomes (see [`plan/mcp-server-plan.md`](https://github.com/presidio-v/presidio-hardened-x402-internal/blob/main/plan/mcp-server-plan.md) in the internal repo). Tentative:
+Scope driven by post-launch distribution outcomes. Tentative:
 
 - **Delivered:** audit emission from tools. All three tools call `_AUDIT.emit()`, for allowed and blocked outcomes alike: `screen_payment_metadata` emits `PII_REDACTED` (entities found) or `PAYMENT_ALLOWED` in in-process mode, with the already-redacted URL; `check_payment_policy` emits `PAYMENT_ALLOWED` or `POLICY_BLOCKED`; `check_payment_replay` emits `PAYMENT_ALLOWED` or `REPLAY_BLOCKED` with the fingerprint. Remote-mode screening emits no local event. Payment-id correlation remains open.
 - Per-call entity-profile override (current `entities` whitelist is per-call but tied to startup `_MODE`; surface more flexibility)
