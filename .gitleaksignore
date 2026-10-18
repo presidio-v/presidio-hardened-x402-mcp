@@ -1,0 +1,4 @@
+# Environment-variable names flagged as generic-api-key in a superseded commit of #73;
+# the current lines carry gitleaks:allow.
+884fbeecfd89a4856e590a6ae24661e706e83803:src/presidio_x402_mcp/server.py:generic-api-key:195
+884fbeecfd89a4856e590a6ae24661e706e83803:src/presidio_x402_mcp/server.py:generic-api-key:199

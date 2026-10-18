@@ -193,11 +193,11 @@ _REMOTE_TIMEOUT = httpx.Timeout(10.0, connect=3.0)
 
 _EVIDENCE_KEY_FILE_ENV = "PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE"
 # Same variable the parent's treasury-binding CLI reads, so one secret serves both.
-_EVIDENCE_KEY_ENV = "PRESIDIO_X402_EVIDENCE_KEY"  # gitleaks:allow (variable name, not a secret)
+_EVIDENCE_KEY_ENV = "PRESIDIO_X402_EVIDENCE_KEY"  # gitleaks:allow (env-var name)
 _DECISION_PATH_ENV = "PRESIDIO_X402_MCP_DECISION_PATH"
 _EVIDENCE_ALGORITHM_ENV = "PRESIDIO_X402_MCP_EVIDENCE_ALGORITHM"
 _EVIDENCE_SIGNER_ENV = "PRESIDIO_X402_MCP_EVIDENCE_SIGNER"
-_EVIDENCE_KEY_ID_ENV = "PRESIDIO_X402_MCP_EVIDENCE_KEY_ID"
+_EVIDENCE_KEY_ID_ENV = "PRESIDIO_X402_MCP_EVIDENCE_KEY_ID"  # gitleaks:allow
 _REQUIRE_EVIDENCE_ENV = "PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY"
 
 DEFAULT_EVIDENCE_SIGNER = "presidio-hardened-x402-mcp"
@@ -273,7 +273,7 @@ def _evidence_from_env() -> _EvidenceConfig | None:
             key = _read_key_file(key_file)
         except OSError as exc:
             return disabled(
-                f"{_EVIDENCE_KEY_FILE_ENV} could not be read ({type(exc).__name__})",
+                f"PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE could not be read ({type(exc).__name__})",
                 logging.ERROR,
             )
     else:
