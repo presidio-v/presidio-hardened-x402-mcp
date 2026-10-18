@@ -2,7 +2,7 @@
 
 Requirements, feature deliberation, and versioning rationale for the MCP server that exposes [`presidio-hardened-x402`](https://github.com/presidio-v/presidio-hardened-x402) library capabilities to autonomous agents over the Model Context Protocol.
 
-This package is a **thin MCP adapter**. All security primitives live in the parent library; this document specifies how selected primitives are made available over stdio MCP transport. Version `0.2.0` is pinned to parent `presidio-hardened-x402>=0.11.1,<0.13.0`; it keeps the original three-tool MCP surface and does not expose the parent v0.7.0 SLO-payment broker as an MCP tool.
+This package is a **thin MCP adapter**. All security primitives live in the parent library; this document specifies how selected primitives are made available over stdio MCP transport. Version `0.3.0` is pinned to parent `presidio-hardened-x402>=0.13.0,<0.14.0` (first release with the `NOT_EVALUATED` control verdict); it keeps the original three-tool MCP surface, adds signed `payment-decision@1` emission from those tools, and does not expose the parent v0.7.0 SLO-payment broker as an MCP tool.
 
 ---
 
@@ -62,6 +62,21 @@ Scope driven by post-launch distribution outcomes. Tentative:
 
 ---
 
+## v0.3.0 Requirements (signed decision evidence)
+
+Founder decision, 2026-10-18: the MCP payment gates must emit signed `payment-decision@1` evidence, not only the HMAC audit log. The audit chain is verifiable only by the holder of `PRESIDIO_X402_CHAIN_KEY`; a signed record is verifiable by anyone holding the public key.
+
+- [x] **Every tool decision emits a signed record.** `screen_payment_metadata` (in-process and successful remote calls), `check_payment_policy` (allow and block) and `check_payment_replay` (fresh and duplicate) each build a `presidio-hardened-x402/payment-decision@1` record with the parent's `build_payment_decision_content` and sign it with `build_decision_evidence`. Records are appended to `PRESIDIO_X402_MCP_DECISION_PATH` (JSON-L, parent `FileDecisionRefWriter`), alongside — never replacing — the HMAC audit log. The tool response carries the `decision_ref`.
+- [x] **Reuse, not reimplementation.** Schema, hashing, signing and the verdict function stay in the parent. The MCP maps a tool outcome onto the parent's `ControlResults`: controls the tool ran carry real verdicts, every other control is `NOT_EVALUATED` (parent 0.13.0), so a record never claims a check that did not happen. `policy_version` stays the parent default — with `NOT_EVALUATED` the signed controls block already identifies the gate, and `policy_version` is the policy predicate's version, not a gate label.
+- [x] **Screening outcome in every record.** The gates scan the URL they are handed and record the entity-type labels as `PII_WARNED` (seen, not redacted); the screening tool records `PII_REDACTED`. No raw metadata string, fingerprint, or userinfo enters a record.
+- [x] **Provenance.** `check_payment_policy` and `check_payment_replay` accept `prior_decision_refs` (max 8, 64-hex), linked into the signed `provenance.prior_decision_refs`. Only refs this process issued are accepted, and the check runs before the gate records state. The tools have no capability chain, so `parents` stays empty and the ADR-0002 top-level `parents` field is never set.
+- [x] **No raw URL reaches the parent.** `check_payment_policy` passes only the redacted URL to `PolicyEngine` (the parent's contract); if screening fails it denies without recording spend. A test runs every tool at DEBUG and asserts no raw PII appears in any log record.
+- [x] **Key configuration follows the parent.** Key from `PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE` (preferred) or the parent's `PRESIDIO_X402_EVIDENCE_KEY`; `ed25519` (default) or `hmac-sha256` (≥ 32-character secret); signer, key id configurable. The key is probe-signed at startup, held in a field excluded from `repr`, and never logged.
+- [x] **Default stays open; strict is opt-in.** No key ⇒ 0.2.x behaviour plus one startup WARNING. `PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY=1` refuses to start unless evidence is fully configured and the key signs. Emission failures after startup are logged and never change a gate's answer.
+- [x] **Tests.** Records verify with `verify_decision_ref` for Ed25519 and HMAC keys; no key ⇒ no record + warning; strict mode refuses; key material absent from logs and `repr`. Verified against the parent 0.13.0 release candidate (`feat/not-evaluated-verdict`).
+
+---
+
 ## Security Model
 
 This MCP server inherits the parent library's threat model. MCP-specific additions:
@@ -74,6 +89,9 @@ This MCP server inherits the parent library's threat model. MCP-specific additio
 | Tool side effects (`check_payment_policy` and `check_payment_replay` record state on every call) misused | Side-effect warnings in tool docstrings, README, `server.json` env-var descriptions, and `SECURITY.md` |
 | Oversize payload from a compromised agent stresses the lib | Pre-screen field-length validation (`_validate_lengths`) rejects with `ValueError` before the lib is touched |
 | Compromised remote screening service injects fake redacted output | Out of scope — operator must verify TLS configuration and audit policy of the configured remote |
+| Gate decisions disputed after the fact; HMAC audit chain not third-party verifiable | Signed `payment-decision@1` records (v0.3.0), verified offline with the parent's `verify_decision_ref`; strict mode `PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY` |
+| Decision-signing key leaks via logs or env listing | Key file preferred (warning if group/world-readable); key excluded from `repr`; startup and emission errors log the exception type only |
+| Agent forges provenance links in a signed record | `prior_decision_refs` accepted only if this process issued them; validated before any gate state is recorded |
 | Parent v0.7.0 SLO broker misinterpreted as an MCP payment tool | Not exposed in this MCP release; agents must use the parent Python API and verified `ArchTranslucencyAdapter` path for signed degradation evidence |
 
 See the parent lib's [SECURITY.md](https://github.com/presidio-v/presidio-hardened-x402/blob/main/SECURITY.md) and [PRESIDIO-REQ.md](https://github.com/presidio-v/presidio-hardened-x402/blob/main/PRESIDIO-REQ.md) for the library-level threat model and full set of security controls.

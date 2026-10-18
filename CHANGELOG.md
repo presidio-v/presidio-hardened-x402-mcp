@@ -6,6 +6,36 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Signed `payment-decision@1` evidence from every tool decision.** The HMAC
+  audit log can be checked only by whoever holds the chain key; these records
+  can be checked by anyone with the public key. All three tools, on allow and
+  block, now build and sign a record through the parent library
+  (`build_payment_decision_content`, `build_decision_evidence`) and append it to
+  `PRESIDIO_X402_MCP_DECISION_PATH`, next to the audit log. Responses carry the
+  `decision_ref`; the two gates accept an optional `prior_decision_refs` list
+  (refs this process issued) to link one payment's decisions. Key from
+  `PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE` or the parent's
+  `PRESIDIO_X402_EVIDENCE_KEY`; `ed25519` or `hmac-sha256`. Without a key the
+  server behaves as 0.2.x and warns once at startup;
+  `PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY=1` refuses to start instead.
+  Controls a tool did not run are recorded as `NOT_EVALUATED`, never as a
+  pass.
+
+### Changed
+
+- **Parent range `presidio-hardened-x402>=0.13.0,<0.14.0`.** 0.13.0 adds the
+  `NOT_EVALUATED` control verdict the records depend on. `uv.lock` is refreshed
+  once 0.13.0 is on PyPI.
+- **`check_payment_policy` hands the parent only the redacted URL.** The raw
+  URL used to reach `PolicyEngine`, whose violation and debug logs printed it
+  to stderr. If URL screening fails the gate now denies without recording
+  spend, instead of evaluating limits against a placeholder.
+- Version 0.3.0 (`pyproject.toml`, `__init__`). `server.json` stays at 0.2.0
+  until the release, so a manual registry publish cannot advertise an
+  unpublished version.
+
 ### Fixed
 
 - **Releases reach the MCP Registry again.** The registry had stayed on 0.1.1:

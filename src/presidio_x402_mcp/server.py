@@ -19,6 +19,15 @@ Environment variables (see README and `plan/mcp-server-plan.md` Phase 0):
   - PRESIDIO_X402_MCP_REMOTE_BASE_URL        https://screen.…      (HTTP-proxy mode, tool 1 only)
   - PRESIDIO_X402_MCP_REMOTE_API_KEY         opaque                (HTTP-proxy mode, paired)
 
+Signed decision evidence (payment-decision@1, written alongside the audit log):
+  - PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE      path to signing key   (preferred over the env key)
+  - PRESIDIO_X402_EVIDENCE_KEY               signing key           (parent library's variable)
+  - PRESIDIO_X402_MCP_DECISION_PATH          path/to/decisions.jsonl
+  - PRESIDIO_X402_MCP_EVIDENCE_ALGORITHM     ed25519 | hmac-sha256 (default ed25519)
+  - PRESIDIO_X402_MCP_EVIDENCE_SIGNER        trust-store identity  (default: package name)
+  - PRESIDIO_X402_MCP_EVIDENCE_KEY_ID        optional key id
+  - PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY   1 -> refuse to start without working evidence
+
 Cross-process keys (read by the underlying lib):
   - PRESIDIO_X402_FINGERPRINT_KEY            32-byte hex           (replay HMAC)
   - PRESIDIO_X402_CHAIN_KEY                  32-byte hex           (audit HMAC chain)
@@ -33,22 +42,46 @@ import asyncio
 import json
 import logging
 import os
+import re
+import stat
+import threading
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 from mcp.server.mcpserver import MCPServer
 from presidio_x402 import (
+    NOT_EVALUATED,
     AuditLog,
     FileAuditWriter,
+    FileDecisionRefWriter,
     NullAuditWriter,
     PIIFilter,
     PolicyConfig,
     PolicyEngine,
     ReplayGuard,
+    build_decision_evidence,
+    build_payment_decision_content,
 )
-from presidio_x402.exceptions import PolicyViolationError, ReplayDetectedError
+from presidio_x402.decision_ref import (
+    ControlResults,
+    details_hash,
+    fingerprint_hash,
+    policy_limit_hash,
+    policy_snapshot_hash,
+)
+from presidio_x402.exceptions import (
+    ConfigurationError,
+    PolicyViolationError,
+    ReplayDetectedError,
+)
+from presidio_x402.mica import EvidenceError, sign_evidence
 from presidio_x402.replay_guard import compute_fingerprint
+
+from presidio_x402_mcp import __version__
 
 logger = logging.getLogger("presidio_x402_mcp")
 logger.setLevel(os.getenv("PRESIDIO_X402_MCP_LOG_LEVEL", "INFO"))
@@ -146,6 +179,153 @@ _REMOTE_API_KEY: str | None = os.getenv("PRESIDIO_X402_MCP_REMOTE_API_KEY")
 _REMOTE_ENABLED: bool = bool(_REMOTE_BASE_URL and _REMOTE_API_KEY)
 _REMOTE_TIMEOUT = httpx.Timeout(10.0, connect=3.0)
 
+
+# ---------------------------------------------------------------------------
+# Signed decision evidence (payment-decision@1)
+#
+# The HMAC audit log is tamper-evident only to whoever holds the chain key; a
+# third party cannot check it. Each gate decision is therefore also emitted as
+# a signed payment-decision@1 record through the parent library, which a
+# verifier checks offline against a pinned trust store. Building, signing and
+# the record schema all stay in the parent; this module only maps a tool call
+# onto the parent's ControlResults.
+# ---------------------------------------------------------------------------
+
+_EVIDENCE_KEY_FILE_ENV = "PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE"
+# Same variable the parent's treasury-binding CLI reads, so one secret serves both.
+_EVIDENCE_KEY_ENV = "PRESIDIO_X402_EVIDENCE_KEY"  # gitleaks:allow (env-var name)
+_DECISION_PATH_ENV = "PRESIDIO_X402_MCP_DECISION_PATH"
+_EVIDENCE_ALGORITHM_ENV = "PRESIDIO_X402_MCP_EVIDENCE_ALGORITHM"
+_EVIDENCE_SIGNER_ENV = "PRESIDIO_X402_MCP_EVIDENCE_SIGNER"
+_EVIDENCE_KEY_ID_ENV = "PRESIDIO_X402_MCP_EVIDENCE_KEY_ID"  # gitleaks:allow
+_REQUIRE_EVIDENCE_ENV = "PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY"
+
+DEFAULT_EVIDENCE_SIGNER = "presidio-hardened-x402-mcp"
+_MIN_HMAC_LENGTH = 32
+#: Fields an MCP tool never sees (no wallet, no network, no raw 402 offer).
+_UNSPECIFIED = "unspecified"
+_OFFER_ABSENT = "not-presented"
+#: A decision_ref is a bare 64-hex sha256; bound the list an agent may pass.
+_DECISION_REF_RE = re.compile(r"^[0-9a-f]{64}$")
+_MAX_PRIOR_REFS = 8
+_ISSUED_REFS_CAP = 4096
+#: Payment fields copied into a record verbatim only when they look like an
+#: address / amount / ticker; anything else is still bound by details_hash.
+_RECORD_TOKEN_RE = re.compile(r"^[A-Za-z0-9:._-]{1,128}$")
+
+
+def _truthy(value: str | None) -> bool:
+    return (value or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+@dataclass(frozen=True)
+class _EvidenceConfig:
+    signing_key: str = field(repr=False)  # never in repr, tracebacks, or logs
+    algorithm: str
+    signer: str
+    key_id: str | None
+    writer: Any
+
+
+def _read_key_file(path: str) -> str:
+    key_path = Path(path)
+    mode = key_path.stat().st_mode
+    if os.name == "posix" and mode & (stat.S_IRWXG | stat.S_IRWXO):
+        logger.warning(
+            "%s is readable by group or others; restrict it to the server user (chmod 600)",
+            _EVIDENCE_KEY_FILE_ENV,
+        )
+    return key_path.read_text(encoding="utf-8").strip()
+
+
+def _evidence_from_env() -> _EvidenceConfig | None:
+    """Read the signing configuration once, at startup.
+
+    Without a usable key the server keeps its pre-0.3.0 behaviour (HMAC audit
+    log only) and says so once, loudly. Refusing to start would break every
+    existing deployment on upgrade, so failing closed is opt-in via
+    ``PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY``. No message here ever includes
+    key material.
+    """
+    strict = _truthy(os.getenv(_REQUIRE_EVIDENCE_ENV))
+
+    def disabled(reason: str, level: int = logging.WARNING) -> None:
+        if strict:
+            raise ConfigurationError(
+                f"signed payment-decision@1 evidence is not available: {reason}. "
+                f"Refusing to start because {_REQUIRE_EVIDENCE_ENV} is set."
+            )
+        # The variable names are spelled out rather than interpolated from the
+        # *_KEY_* constants, so static analysis sees no key-named value reach a log.
+        logger.log(
+            level,
+            "Signed payment-decision@1 evidence is DISABLED: %s. Gate decisions are "
+            "recorded only in the HMAC audit log. Set PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE "
+            "(or PRESIDIO_X402_EVIDENCE_KEY) and PRESIDIO_X402_MCP_DECISION_PATH to enable "
+            "it; set PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY=1 to refuse to start without it.",
+            reason,
+        )
+        return None
+
+    key_file = os.getenv(_EVIDENCE_KEY_FILE_ENV, "").strip()
+    if key_file:
+        try:
+            key = _read_key_file(key_file)
+        except OSError as exc:
+            return disabled(
+                f"PRESIDIO_X402_MCP_EVIDENCE_KEY_FILE could not be read ({type(exc).__name__})",
+                logging.ERROR,
+            )
+    else:
+        key = os.getenv(_EVIDENCE_KEY_ENV, "").strip()
+    if not key:
+        return disabled("no signing key is configured")
+
+    path = os.getenv(_DECISION_PATH_ENV, "").strip()
+    if not path:
+        return disabled(
+            f"a signing key is set but {_DECISION_PATH_ENV} is not, so records have nowhere to go",
+            logging.ERROR,
+        )
+
+    algorithm = os.getenv(_EVIDENCE_ALGORITHM_ENV, "").strip() or "ed25519"
+    signer = os.getenv(_EVIDENCE_SIGNER_ENV, "").strip() or DEFAULT_EVIDENCE_SIGNER
+    key_id = os.getenv(_EVIDENCE_KEY_ID_ENV, "").strip() or None
+    if algorithm == "hmac-sha256" and len(key) < _MIN_HMAC_LENGTH:
+        return disabled(
+            f"the hmac-sha256 secret is shorter than {_MIN_HMAC_LENGTH} characters",
+            logging.ERROR,
+        )
+    # Sign a probe once so a malformed key or unknown algorithm surfaces at
+    # startup rather than as a silent per-call emission failure.
+    try:
+        sign_evidence("0" * 64, signer, algorithm=algorithm, key=key)
+    except EvidenceError:
+        return disabled(f"the signing key is not valid for algorithm {algorithm!r}", logging.ERROR)
+
+    logger.info(
+        "Signed payment-decision@1 evidence enabled: signer=%s algorithm=%s path=%s",
+        signer,
+        algorithm,
+        path,
+    )
+    return _EvidenceConfig(
+        signing_key=key,
+        algorithm=algorithm,
+        signer=signer,
+        key_id=key_id,
+        writer=FileDecisionRefWriter(path),
+    )
+
+
+_EVIDENCE: _EvidenceConfig | None = _evidence_from_env()
+
+# decision_refs this process signed. A prior_decision_refs entry is signed into
+# a later record as provenance, so only refs this server issued are accepted —
+# otherwise the signer would vouch for links an agent made up.
+_ISSUED_REFS: OrderedDict[str, None] = OrderedDict()
+_ISSUED_LOCK = threading.Lock()
+
 mcp = MCPServer("presidio-x402")
 
 
@@ -163,6 +343,22 @@ def _validate_lengths(resource_url: str, description: str, reason: str) -> None:
         raise ValueError(f"reason exceeds {_MAX_REASON} characters")
 
 
+def _screen_url(resource_url: str) -> tuple[str, list[str] | None]:
+    """Redact *resource_url* and return it with the entity types found.
+
+    Entity types are ``None`` when redaction failed, so a caller cannot mistake
+    "screening did not run" for "no PII".
+    """
+    try:
+        filt = PIIFilter(mode=_MODE, redaction_template="<{entity_type}>")
+        clean, hits = filt.scan_and_redact(resource_url)
+        return clean, sorted({h.entity_type for h in hits})
+    except Exception:  # noqa: BLE001 - see _audit_safe_url: never leak the raw URL
+        # No exc_info: a traceback can carry the input string, i.e. the raw URL.
+        logger.warning("URL redaction failed; using a placeholder")
+        return "<REDACTION_FAILED>", None
+
+
 def _audit_safe_url(resource_url: str) -> str:
     """Redact *resource_url* before it is written to the audit log.
 
@@ -177,13 +373,178 @@ def _audit_safe_url(resource_url: str) -> str:
     payment. On failure this degrades to a constant placeholder — never to the
     raw URL.
     """
+    return _screen_url(resource_url)[0]
+
+
+def _record_origin(redacted_url: str) -> str:
+    """Scheme and host of an already-redacted URL, without userinfo."""
     try:
-        filt = PIIFilter(mode=_MODE, redaction_template="<{entity_type}>")
-        clean, _ = filt.scan_and_redact(resource_url)
-        return clean
-    except Exception:  # noqa: BLE001 - see docstring: never leak the raw URL
-        logger.warning("audit URL redaction failed; recording a placeholder", exc_info=True)
-        return "<REDACTION_FAILED>"
+        parsed = urlparse(redacted_url)
+        host = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return _UNSPECIFIED
+    if not parsed.scheme or not host:
+        return _UNSPECIFIED
+    if ":" in host:
+        host = f"[{host}]"
+    return f"{parsed.scheme}://{host}" + (f":{port}" if port else "")
+
+
+def _record_token(value: str) -> str:
+    return value if _RECORD_TOKEN_RE.fullmatch(value) else "unrecognised"
+
+
+def _validated_prior_refs(prior_decision_refs: list[str] | None) -> list[str]:
+    """Check caller-supplied prior refs before any gate records state.
+
+    Runs ahead of ``check_and_record`` so a rejected call never consumes spend
+    budget or a replay fingerprint.
+    """
+    refs = list(prior_decision_refs or [])
+    if len(refs) > _MAX_PRIOR_REFS:
+        raise ValueError(f"prior_decision_refs accepts at most {_MAX_PRIOR_REFS} entries")
+    for ref in refs:
+        if not (isinstance(ref, str) and _DECISION_REF_RE.fullmatch(ref)):
+            raise ValueError("prior_decision_refs entries must be 64-character lowercase hex")
+    if _EVIDENCE is not None:
+        with _ISSUED_LOCK:
+            unknown = [r for r in refs if r not in _ISSUED_REFS]
+        if unknown:
+            raise ValueError(
+                "prior_decision_refs contains a decision_ref this server did not issue"
+            )
+    return list(dict.fromkeys(refs))
+
+
+def _controls(
+    pii_entities: list[str],
+    *,
+    pii_mutated: bool,
+    policy_verdict: str = NOT_EVALUATED,
+    replay_verdict: str = NOT_EVALUATED,
+    fingerprint: str | None = None,
+) -> ControlResults:
+    """Map one tool's outcome onto the parent's five-control record.
+
+    Every control the tool did not run is ``NOT_EVALUATED`` — a record never
+    claims a check that did not happen. Each tool screens the URL it is handed,
+    so ``pii`` is always evaluated: ``screen_payment_metadata`` returns redacted
+    strings (``PII_REDACTED``); the gates observe PII in the URL but pay it
+    unchanged, so the honest verdict there is ``PII_WARNED``. The MCP has no
+    wallet allowlist or multi-party approval, so ``trusted_wallet`` and ``mpa``
+    are never evaluated.
+    """
+    if not pii_entities:
+        pii_verdict = "PII_NONE"
+    else:
+        pii_verdict = "PII_REDACTED" if pii_mutated else "PII_WARNED"
+    policy_ran = policy_verdict != NOT_EVALUATED
+    config = _POLICY.config
+    return ControlResults(
+        pii_verdict=pii_verdict,
+        pii_entities=tuple(pii_entities),
+        pii_mutated=bool(pii_entities) and pii_mutated,
+        trusted_wallet_verdict=NOT_EVALUATED,
+        policy_verdict=policy_verdict,
+        policy_snapshot_hash=policy_snapshot_hash(config) if policy_ran else "",
+        policy_limit_hash=policy_limit_hash(config) if policy_ran else None,
+        replay_verdict=replay_verdict,
+        replay_fingerprint_hash=fingerprint_hash(fingerprint) if fingerprint else None,
+        mpa_verdict=NOT_EVALUATED,
+    )
+
+
+def _emit_decision(
+    gate: str,
+    controls: ControlResults,
+    *,
+    resource_origin: str,
+    pay_to: str = _UNSPECIFIED,
+    amount: str = _UNSPECIFIED,
+    currency: str = _UNSPECIFIED,
+    prior_decision_refs: list[str] | None = None,
+) -> str | None:
+    """Sign and write one payment-decision@1 record; return its decision_ref.
+
+    Best-effort, like the parent pipeline's emitter: the gate has already
+    decided, and a failure to record that decision must not reverse it. Errors
+    are logged by type only, so nothing derived from the key reaches a log.
+    """
+    cfg = _EVIDENCE
+    if cfg is None:
+        return None
+    try:
+        content = build_payment_decision_content(
+            agent_id=_POLICY.config.agent_id or "",
+            payment_signer=_UNSPECIFIED,
+            network=_UNSPECIFIED,
+            binding="x402",
+            offer_hash_absent=_OFFER_ABSENT,
+            details_hash=details_hash(
+                pay_to=pay_to, amount=amount, currency=currency, network=_UNSPECIFIED
+            ),
+            pay_to=_record_token(pay_to),
+            amount=_record_token(amount),
+            currency=_record_token(currency),
+            resource_origin=resource_origin,
+            controls=controls,
+            prior_decision_refs=prior_decision_refs,
+        )
+        envelope = build_decision_evidence(
+            content,
+            signing_key=cfg.signing_key,
+            algorithm=cfg.algorithm,
+            signer=cfg.signer,
+            key_id=cfg.key_id,
+            source_version=__version__,
+        )
+        cfg.writer.write(envelope)
+    except Exception as exc:  # noqa: BLE001 - see docstring: never reverse a decision
+        logger.error(
+            "payment-decision@1 emission failed for the %s gate (%s); gate outcome unaffected",
+            gate,
+            type(exc).__name__,
+        )
+        return None
+    decision_ref = str(envelope["decision_ref"])
+    with _ISSUED_LOCK:
+        _ISSUED_REFS[decision_ref] = None
+        while len(_ISSUED_REFS) > _ISSUED_REFS_CAP:
+            _ISSUED_REFS.popitem(last=False)
+    return decision_ref
+
+
+async def _record_decision(
+    gate: str,
+    url_entities: list[str] | None,
+    redacted_url: str,
+    *,
+    pii_mutated: bool = False,
+    policy_verdict: str = NOT_EVALUATED,
+    replay_verdict: str = NOT_EVALUATED,
+    fingerprint: str | None = None,
+    **payment: Any,
+) -> str | None:
+    if _EVIDENCE is None:
+        return None
+    if url_entities is None:
+        logger.warning("no payment-decision@1 record for the %s gate: URL screening failed", gate)
+        return None
+    controls = _controls(
+        url_entities,
+        pii_mutated=pii_mutated,
+        policy_verdict=policy_verdict,
+        replay_verdict=replay_verdict,
+        fingerprint=fingerprint,
+    )
+    return await asyncio.to_thread(
+        _emit_decision,
+        gate,
+        controls,
+        resource_origin=_record_origin(redacted_url),
+        **payment,
+    )
 
 
 def _collapse(hits: list, field: str) -> list[dict[str, Any]]:
@@ -319,14 +680,23 @@ async def screen_payment_metadata(
     Returns:
         On success: dict with keys redacted_resource_url, redacted_description,
         redacted_reason, entities_found (list of {entity_type, field, count}),
-        and mode (one of "in_process", "remote").
+        and mode (one of "in_process", "remote"); plus decision_ref when signed
+        decision evidence is enabled (pass it to the gates as prior_decision_refs).
         On remote failure: dict with keys error (one of "auth_error",
         "rate_limit", "unavailable"), detail, optional retry_after (for
         rate_limit), and mode ("remote").
     """
     _validate_lengths(resource_url, description, reason)
     if _REMOTE_ENABLED:
-        return await _scan_remote(resource_url, description, reason, entities)
+        remote = await _scan_remote(resource_url, description, reason, entities)
+        if "error" not in remote:
+            remote_types = sorted({f["entity_type"] for f in remote["entities_found"]})
+            d_ref = await _record_decision(
+                "screen", remote_types, remote["redacted_resource_url"], pii_mutated=True
+            )
+            if d_ref:
+                remote["decision_ref"] = d_ref
+        return remote
     url, desc, reason_out, findings = await asyncio.to_thread(
         _scan_in_process,
         resource_url,
@@ -342,17 +712,25 @@ async def screen_payment_metadata(
         outcome="allowed",
         pii_entities_found=entity_types,
     )
-    return {
+    result: dict[str, Any] = {
         "redacted_resource_url": url,
         "redacted_description": desc,
         "redacted_reason": reason_out,
         "entities_found": findings,
         "mode": "in_process",
     }
+    d_ref = await _record_decision("screen", sorted(set(entity_types)), url, pii_mutated=True)
+    if d_ref:
+        result["decision_ref"] = d_ref
+    return result
 
 
 @mcp.tool()
-async def check_payment_policy(resource_url: str, amount_usd: float) -> dict[str, Any]:
+async def check_payment_policy(
+    resource_url: str,
+    amount_usd: float,
+    prior_decision_refs: list[str] | None = None,
+) -> dict[str, Any]:
     """Check whether a payment is allowed by the configured spending policy.
 
     WARNING: this records the spend against rolling time-window ledgers.
@@ -363,18 +741,40 @@ async def check_payment_policy(resource_url: str, amount_usd: float) -> dict[str
     Configure limits at server startup via PRESIDIO_X402_MCP_* env vars.
 
     Args:
-        resource_url: x402 resource URL being paid (used for per-endpoint limits).
+        resource_url: x402 resource URL being paid. Screened first; only the
+            redacted URL reaches the policy engine (per-endpoint limits match on
+            it, so keep PII out of configured endpoint prefixes).
         amount_usd: Payment amount in USD-equivalent.
+        prior_decision_refs: Optional decision_ref values this server returned
+            earlier for the same payment (e.g. from screen_payment_metadata);
+            linked into the signed record. Max 8.
 
     Returns:
         {"allowed": true} on success, or
-        {"allowed": false, "reason": str, "limit_usd": float, "amount_usd": float}.
+        {"allowed": false, "reason": str, "limit_usd": float, "amount_usd": float};
+        plus decision_ref when signed decision evidence is enabled.
     """
-    safe_url = await asyncio.to_thread(_audit_safe_url, resource_url)
+    prior = _validated_prior_refs(prior_decision_refs)
+    safe_url, url_entities = await asyncio.to_thread(_screen_url, resource_url)
+    if url_entities is None:
+        # The engine is handed only the redacted URL (its contract, and the way
+        # raw PII stays out of its logs). With no redacted URL there is nothing
+        # safe to evaluate per-endpoint limits against, so deny rather than
+        # check a placeholder that would match no endpoint cap.
+        reason = "resource_url screening failed; policy not evaluated"
+        _AUDIT.emit(
+            "POLICY_BLOCKED",
+            resource_url=safe_url,
+            amount_usd=amount_usd,
+            outcome="blocked",
+            error_message=reason,
+        )
+        return {"allowed": False, "reason": reason, "limit_usd": None, "amount_usd": amount_usd}
+    result: dict[str, Any]
     try:
         await asyncio.to_thread(
             _POLICY.check_and_record,
-            resource_url=resource_url,
+            resource_url=safe_url,
             amount_usd=amount_usd,
         )
         _AUDIT.emit(
@@ -383,7 +783,8 @@ async def check_payment_policy(resource_url: str, amount_usd: float) -> dict[str
             amount_usd=amount_usd,
             outcome="allowed",
         )
-        return {"allowed": True}
+        result = {"allowed": True}
+        verdict = "ALLOW"
     except PolicyViolationError as exc:
         _AUDIT.emit(
             "POLICY_BLOCKED",
@@ -393,12 +794,25 @@ async def check_payment_policy(resource_url: str, amount_usd: float) -> dict[str
             policy_limit_usd=exc.limit_usd,
             error_message=str(exc),
         )
-        return {
+        result = {
             "allowed": False,
             "reason": str(exc),
             "limit_usd": exc.limit_usd,
             "amount_usd": exc.amount_usd,
         }
+        verdict = "VIOLATION"
+    d_ref = await _record_decision(
+        "policy",
+        url_entities,
+        safe_url,
+        policy_verdict=verdict,
+        amount=str(amount_usd),
+        currency="USD",
+        prior_decision_refs=prior,
+    )
+    if d_ref:
+        result["decision_ref"] = d_ref
+    return result
 
 
 @mcp.tool()
@@ -408,6 +822,7 @@ async def check_payment_replay(
     amount: str,
     currency: str,
     deadline_seconds: int,
+    prior_decision_refs: list[str] | None = None,
 ) -> dict[str, Any]:
     """Check whether this exact payment has been seen recently (replay protection).
 
@@ -424,13 +839,17 @@ async def check_payment_replay(
         amount: Amount as string (preserves precision).
         currency: Currency symbol (e.g. "USDC").
         deadline_seconds: Payment deadline as epoch seconds.
+        prior_decision_refs: Optional decision_ref values this server returned
+            earlier for the same payment; linked into the signed record. Max 8.
 
     Returns:
         {"is_replay": false, "fingerprint": "<hex>"} on first seen, or
-        {"is_replay": true, "fingerprint": "<hex>"} on duplicate.
+        {"is_replay": true, "fingerprint": "<hex>"} on duplicate;
+        plus decision_ref when signed decision evidence is enabled.
     """
+    prior = _validated_prior_refs(prior_decision_refs)
     fp = compute_fingerprint(resource_url, pay_to, amount, currency, deadline_seconds)
-    safe_url = await asyncio.to_thread(_audit_safe_url, resource_url)
+    safe_url, url_entities = await asyncio.to_thread(_screen_url, resource_url)
     try:
         await asyncio.to_thread(_REPLAY.check_and_record, fp)
         _AUDIT.emit(
@@ -439,7 +858,7 @@ async def check_payment_replay(
             outcome="allowed",
             replay_fingerprint=fp,
         )
-        return {"is_replay": False, "fingerprint": fp}
+        is_replay = False
     except ReplayDetectedError:
         _AUDIT.emit(
             "REPLAY_BLOCKED",
@@ -447,7 +866,22 @@ async def check_payment_replay(
             outcome="blocked",
             replay_fingerprint=fp,
         )
-        return {"is_replay": True, "fingerprint": fp}
+        is_replay = True
+    result: dict[str, Any] = {"is_replay": is_replay, "fingerprint": fp}
+    d_ref = await _record_decision(
+        "replay",
+        url_entities,
+        safe_url,
+        replay_verdict="DUPLICATE" if is_replay else "FRESH",
+        fingerprint=fp,
+        pay_to=pay_to,
+        amount=amount,
+        currency=currency,
+        prior_decision_refs=prior,
+    )
+    if d_ref:
+        result["decision_ref"] = d_ref
+    return result
 
 
 def main() -> None:
