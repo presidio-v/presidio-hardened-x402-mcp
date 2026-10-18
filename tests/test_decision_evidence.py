@@ -16,6 +16,7 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from presidio_x402 import (
+    NOT_EVALUATED,
     PolicyConfig,
     PolicyEngine,
     ReplayGuard,
@@ -87,7 +88,10 @@ class TestEveryDecisionIsSignedAndVerifies:
         assert result["decision_ref"] == env["decision_ref"]
         pii = env["payment_decision"]["controls"]["pii"]
         assert pii == {"verdict": "PII_REDACTED", "entities": ["EMAIL_ADDRESS"], "mutated": True}
-        assert env["payment_decision"]["policy_version"] == "presidio-x402-mcp.screen.v1"
+        controls = env["payment_decision"]["controls"]
+        for key in ("trusted_wallet", "policy", "replay", "mpa"):
+            assert controls[key]["verdict"] == NOT_EVALUATED
+        assert "policy_snapshot_hash" not in controls["policy"]
 
     @pytest.mark.anyio
     async def test_policy_allow_and_block_both_emit(self, signed):
@@ -99,7 +103,11 @@ class TestEveryDecisionIsSignedAndVerifies:
             assert verify_decision_ref(env, signed["trust"]).ok
         assert first["payment_decision"]["verdict"] == "ALLOW"
         assert second["payment_decision"]["verdict"] == "DENY"
-        assert second["payment_decision"]["controls"]["policy"]["verdict"] == "VIOLATION"
+        controls = second["payment_decision"]["controls"]
+        assert controls["policy"]["verdict"] == "VIOLATION"
+        assert controls["policy"]["policy_snapshot_hash"].startswith("sha256:")
+        for key in ("trusted_wallet", "replay", "mpa"):
+            assert controls[key]["verdict"] == NOT_EVALUATED
         assert blocked["decision_ref"] == second["decision_ref"]
 
     @pytest.mark.anyio
@@ -117,6 +125,7 @@ class TestEveryDecisionIsSignedAndVerifies:
         assert verify_decision_ref(fresh, signed["trust"]).ok
         assert verify_decision_ref(dup, signed["trust"]).ok
         assert fresh["payment_decision"]["controls"]["replay"]["verdict"] == "FRESH"
+        assert fresh["payment_decision"]["controls"]["policy"]["verdict"] == NOT_EVALUATED
         assert dup["payment_decision"]["verdict"] == "DENY"
         # Only a hash of the fingerprint enters the record.
         raw = signed["path"].read_text()
@@ -145,10 +154,9 @@ class TestEveryDecisionIsSignedAndVerifies:
         assert len(signed["records"]()) == 1
 
     @pytest.mark.anyio
-    async def test_no_top_level_parents_so_parent_0_12_2_and_main_agree(self, signed):
+    async def test_no_capability_parents(self, signed):
         """The MCP has no capability chain, so ADR-0002 top-level ``parents``
-        (unreleased parent #146) is never populated: records are byte-shaped the
-        same on parent 0.12.2 and on its main branch."""
+        is never populated."""
         await check_payment_policy(resource_url="https://x.test/a", amount_usd=1.0)
         (env,) = signed["records"]()
         assert "parents" not in env["payment_decision"]
@@ -279,3 +287,69 @@ class TestConfiguration:
         assert result == {"allowed": True}
         assert "emission failed" in caplog.text
         assert signed["key"] not in caplog.text
+
+
+class TestRawUrlNeverReachesALog:
+    """The parent's contract is that callers hand it the redacted URL; its
+    PolicyEngine logs the URL it is given on violations and at DEBUG."""
+
+    @pytest.mark.anyio
+    async def test_no_tool_logs_the_raw_url_at_any_level(self, signed, caplog, monkeypatch):
+        monkeypatch.setattr(
+            srv,
+            "_POLICY",
+            PolicyEngine(
+                PolicyConfig(
+                    max_per_call_usd=5.0,
+                    daily_limit_usd=6.0,
+                    per_endpoint={"https://x.test": 4.5},
+                )
+            ),
+        )
+        with caplog.at_level(logging.DEBUG):
+            await screen_payment_metadata(resource_url=PII_URL, description="for " + PII_URL)
+            await check_payment_policy(resource_url=PII_URL, amount_usd=1.0)  # allowed
+            await check_payment_policy(resource_url=PII_URL, amount_usd=50.0)  # per-call
+            await check_payment_policy(resource_url=PII_URL, amount_usd=4.0)  # per-endpoint
+            args = {
+                "resource_url": PII_URL,
+                "pay_to": "0xabc",
+                "amount": "1",
+                "currency": "USDC",
+                "deadline_seconds": 1_800_000_002,
+            }
+            await check_payment_replay(**args)
+            await check_payment_replay(**args)
+        assert caplog.records, "expected the parent to log something at DEBUG"
+        assert "alice.martin" not in caplog.text
+        assert "alice.martin" not in signed["path"].read_text()
+
+    @pytest.mark.anyio
+    async def test_policy_engine_receives_only_the_redacted_url(self, monkeypatch):
+        seen: list[str] = []
+        engine = srv._POLICY
+
+        class Spy:
+            config = engine.config
+
+            def check_and_record(self, *, resource_url, amount_usd):
+                seen.append(resource_url)
+                return engine.check_and_record(resource_url=resource_url, amount_usd=amount_usd)
+
+        monkeypatch.setattr(srv, "_POLICY", Spy())
+        await check_payment_policy(resource_url=PII_URL, amount_usd=1.0)
+        assert seen == ["https://x.test/users/<EMAIL_ADDRESS>/exports"]
+
+    @pytest.mark.anyio
+    async def test_policy_denies_without_spend_when_screening_fails(self, monkeypatch):
+        def boom(*_a, **_k):
+            raise RuntimeError("filter exploded: " + PII_URL)
+
+        calls: list[str] = []
+        monkeypatch.setattr(srv, "PIIFilter", boom)
+        monkeypatch.setattr(
+            srv._POLICY, "check_and_record", lambda **kw: calls.append(kw["resource_url"])
+        )
+        result = await check_payment_policy(resource_url=PII_URL, amount_usd=1.0)
+        assert result["allowed"] is False and "screening failed" in result["reason"]
+        assert calls == []

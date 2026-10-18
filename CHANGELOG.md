@@ -20,11 +20,18 @@ versioning follows [SemVer](https://semver.org/).
   `PRESIDIO_X402_EVIDENCE_KEY`; `ed25519` or `hmac-sha256`. Without a key the
   server behaves as 0.2.x and warns once at startup;
   `PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY=1` refuses to start instead.
-  Parent range unchanged (`>=0.11.1,<0.13.0`): the tools carry no capability
-  parents, so nothing depends on the parent's unreleased top-level `parents`.
+  Controls a tool did not run are recorded as `NOT_EVALUATED`, never as a
+  pass.
 
 ### Changed
 
+- **Parent range `presidio-hardened-x402>=0.13.0,<0.14.0`.** 0.13.0 adds the
+  `NOT_EVALUATED` control verdict the records depend on. `uv.lock` is refreshed
+  once 0.13.0 is on PyPI.
+- **`check_payment_policy` hands the parent only the redacted URL.** The raw
+  URL used to reach `PolicyEngine`, whose violation and debug logs printed it
+  to stderr. If URL screening fails the gate now denies without recording
+  spend, instead of evaluating limits against a placeholder.
 - Version 0.3.0 (`pyproject.toml`, `__init__`). `server.json` stays at 0.2.0
   until the release, so a manual registry publish cannot advertise an
   unpublished version.

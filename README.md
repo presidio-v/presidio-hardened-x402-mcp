@@ -12,7 +12,7 @@
 
 Pre-payment safety gate for x402 — agents call `screen_payment_metadata(...)`, `check_payment_policy(...)`, and `check_payment_replay(...)` before signing, catching PII, budget overruns, and duplicate payments before metadata or money leaves the agent host.
 
-Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned for parent `0.11.x`–`0.12.x` compatibility (`presidio-hardened-x402>=0.11.1,<0.13.0`). The `>=0.11.1` floor is a security floor, not a preference — it is the release that closed the percent-encoded PII redaction bypass.
+Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned to parent `0.13.x` (`presidio-hardened-x402>=0.13.0,<0.14.0`). 0.13.0 is the first parent that can record a control as `NOT_EVALUATED`, which signed decision evidence needs; it also includes the 0.11.1 fix for the percent-encoded PII redaction bypass, which remains a security floor.
 
 ## Why this exists
 
@@ -109,6 +109,8 @@ Detects and redacts PII in payment metadata. **No side effects** — safe to cal
 
 Spending-policy gate. **Records the spend on success** — call exactly once, immediately before payment. Skipping the actual payment after a successful check inflates the daily-limit ledger until the window rolls over.
 
+The URL is screened first and only the redacted URL reaches the policy engine, so no raw URL lands in the parent's logs. Per-endpoint limits match on that redacted URL; keep PII out of configured endpoint prefixes. If screening fails, the gate denies without recording spend.
+
 ```jsonc
 // Input
 { "resource_url": "https://api.foo.com/x", "amount_usd": 1.50 }
@@ -180,9 +182,9 @@ python -m presidio_x402.decision_ref /var/log/presidio/x402-mcp-decisions.jsonl 
 
 **Without a key** the server behaves exactly as 0.2.x — audit log only — and logs one WARNING at startup saying signed evidence is disabled. A key without `PRESIDIO_X402_MCP_DECISION_PATH`, an unreadable key file, or a key the signer rejects is logged at ERROR and also leaves evidence off. Set `PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY=1` to refuse to start in any of those cases instead. Once running, a failed write is logged and the gate's answer stands: a record of a decision never reverses the decision.
 
-**What a record says.** Each tool evaluates one control, but `payment-decision@1` always carries all five (`pii → trusted_wallet → policy → replay → mpa`). The control the tool evaluated holds its real verdict; the others carry the schema's pass values. The signed `policy_version` names the gate — `presidio-x402-mcp.screen.v1`, `.policy.v1`, or `.replay.v1` — so read a record as *that gate's* decision, not as proof that every control ran. Chain the three with `prior_decision_refs` to get one linked set per payment.
+**What a record says.** `payment-decision@1` always carries all five controls (`pii → trusted_wallet → policy → replay → mpa`). Each record holds real verdicts only for what its tool ran and `NOT_EVALUATED` for the rest: every tool screens the URL (`pii`), `check_payment_policy` adds `policy`, `check_payment_replay` adds `replay`; `trusted_wallet` and `mpa` are never evaluated here. `NOT_EVALUATED` never fails a decision and never claims a pass, so the controls block alone says which gate decided. Chain the three with `prior_decision_refs` to get one linked set per payment.
 
-**What it never contains.** Raw `resource_url`, `description`, or `reason`; only the URL's scheme and host, the entity-type labels found, and hashes (policy snapshot, replay fingerprint, payment details). The gates see PII in the URL they are handed but pay it unchanged, so their PII verdict is `PII_WARNED`; `screen_payment_metadata` returns redacted strings and records `PII_REDACTED`. Fields an MCP tool never sees — payer wallet, network, the raw 402 offer — are recorded as `unspecified` / `not-presented`. The records carry no capability-chain `parents`, so they are identical on parent 0.12.2 and on later releases that add the top-level ADR-0002 `parents` field.
+**What it never contains.** Raw `resource_url`, `description`, or `reason`; only the URL's scheme and host, the entity-type labels found, and hashes (policy snapshot, replay fingerprint, payment details). The gates see PII in the URL they are handed but pay it unchanged, so their PII verdict is `PII_WARNED`; `screen_payment_metadata` returns redacted strings and records `PII_REDACTED`. Fields an MCP tool never sees — payer wallet, network, the raw 402 offer — are recorded as `unspecified` / `not-presented`. The records carry no capability-chain `parents`, so the ADR-0002 top-level `parents` field is never set.
 
 ## Modes
 

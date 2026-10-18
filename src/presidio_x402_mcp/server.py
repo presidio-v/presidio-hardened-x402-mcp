@@ -54,6 +54,7 @@ from urllib.parse import urlparse
 import httpx
 from mcp.server.mcpserver import MCPServer
 from presidio_x402 import (
+    NOT_EVALUATED,
     AuditLog,
     FileAuditWriter,
     FileDecisionRefWriter,
@@ -201,11 +202,6 @@ _REQUIRE_EVIDENCE_ENV = "PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY"
 
 DEFAULT_EVIDENCE_SIGNER = "presidio-hardened-x402-mcp"
 _MIN_HMAC_SECRET_CHARS = 32
-#: The signed ``policy_version`` names the MCP gate that produced the record.
-#: Each tool evaluates one control; the others carry the schema's pass values,
-#: so a verifier must read the record as "this gate's decision", not as proof
-#: that every control ran.
-_GATE_POLICY_VERSION = "presidio-x402-mcp.{gate}.v1"
 #: Fields an MCP tool never sees (no wallet, no network, no raw 402 offer).
 _UNSPECIFIED = "unspecified"
 _OFFER_ABSENT = "not-presented"
@@ -359,7 +355,8 @@ def _screen_url(resource_url: str) -> tuple[str, list[str] | None]:
         clean, hits = filt.scan_and_redact(resource_url)
         return clean, sorted({h.entity_type for h in hits})
     except Exception:  # noqa: BLE001 - see _audit_safe_url: never leak the raw URL
-        logger.warning("audit URL redaction failed; recording a placeholder", exc_info=True)
+        # No exc_info: a traceback can carry the input string, i.e. the raw URL.
+        logger.warning("URL redaction failed; using a placeholder")
         return "<REDACTION_FAILED>", None
 
 
@@ -425,30 +422,37 @@ def _controls(
     pii_entities: list[str],
     *,
     pii_mutated: bool,
-    policy_verdict: str = "ALLOW",
-    replay_verdict: str = "FRESH",
+    policy_verdict: str = NOT_EVALUATED,
+    replay_verdict: str = NOT_EVALUATED,
     fingerprint: str | None = None,
 ) -> ControlResults:
     """Map one tool's outcome onto the parent's five-control record.
 
-    ``screen_payment_metadata`` returns redacted strings (``PII_REDACTED``); the
-    gates only observe PII in the URL they were handed and pay it unchanged, so
-    the honest verdict there is ``PII_WARNED``.
+    Every control the tool did not run is ``NOT_EVALUATED`` — a record never
+    claims a check that did not happen. Each tool screens the URL it is handed,
+    so ``pii`` is always evaluated: ``screen_payment_metadata`` returns redacted
+    strings (``PII_REDACTED``); the gates observe PII in the URL but pay it
+    unchanged, so the honest verdict there is ``PII_WARNED``. The MCP has no
+    wallet allowlist or multi-party approval, so ``trusted_wallet`` and ``mpa``
+    are never evaluated.
     """
     if not pii_entities:
         pii_verdict = "PII_NONE"
     else:
         pii_verdict = "PII_REDACTED" if pii_mutated else "PII_WARNED"
+    policy_ran = policy_verdict != NOT_EVALUATED
     config = _POLICY.config
     return ControlResults(
         pii_verdict=pii_verdict,
         pii_entities=tuple(pii_entities),
         pii_mutated=bool(pii_entities) and pii_mutated,
+        trusted_wallet_verdict=NOT_EVALUATED,
         policy_verdict=policy_verdict,
-        policy_snapshot_hash=policy_snapshot_hash(config),
-        policy_limit_hash=policy_limit_hash(config),
+        policy_snapshot_hash=policy_snapshot_hash(config) if policy_ran else "",
+        policy_limit_hash=policy_limit_hash(config) if policy_ran else None,
         replay_verdict=replay_verdict,
         replay_fingerprint_hash=fingerprint_hash(fingerprint) if fingerprint else None,
+        mpa_verdict=NOT_EVALUATED,
     )
 
 
@@ -486,7 +490,6 @@ def _emit_decision(
             currency=_record_token(currency),
             resource_origin=resource_origin,
             controls=controls,
-            policy_version=_GATE_POLICY_VERSION.format(gate=gate),
             prior_decision_refs=prior_decision_refs,
         )
         envelope = build_decision_evidence(
@@ -519,8 +522,8 @@ async def _record_decision(
     redacted_url: str,
     *,
     pii_mutated: bool = False,
-    policy_verdict: str = "ALLOW",
-    replay_verdict: str = "FRESH",
+    policy_verdict: str = NOT_EVALUATED,
+    replay_verdict: str = NOT_EVALUATED,
     fingerprint: str | None = None,
     **payment: Any,
 ) -> str | None:
@@ -739,7 +742,9 @@ async def check_payment_policy(
     Configure limits at server startup via PRESIDIO_X402_MCP_* env vars.
 
     Args:
-        resource_url: x402 resource URL being paid (used for per-endpoint limits).
+        resource_url: x402 resource URL being paid. Screened first; only the
+            redacted URL reaches the policy engine (per-endpoint limits match on
+            it, so keep PII out of configured endpoint prefixes).
         amount_usd: Payment amount in USD-equivalent.
         prior_decision_refs: Optional decision_ref values this server returned
             earlier for the same payment (e.g. from screen_payment_metadata);
@@ -752,11 +757,25 @@ async def check_payment_policy(
     """
     prior = _validated_prior_refs(prior_decision_refs)
     safe_url, url_entities = await asyncio.to_thread(_screen_url, resource_url)
+    if url_entities is None:
+        # The engine is handed only the redacted URL (its contract, and the way
+        # raw PII stays out of its logs). With no redacted URL there is nothing
+        # safe to evaluate per-endpoint limits against, so deny rather than
+        # check a placeholder that would match no endpoint cap.
+        reason = "resource_url screening failed; policy not evaluated"
+        _AUDIT.emit(
+            "POLICY_BLOCKED",
+            resource_url=safe_url,
+            amount_usd=amount_usd,
+            outcome="blocked",
+            error_message=reason,
+        )
+        return {"allowed": False, "reason": reason, "limit_usd": None, "amount_usd": amount_usd}
     result: dict[str, Any]
     try:
         await asyncio.to_thread(
             _POLICY.check_and_record,
-            resource_url=resource_url,
+            resource_url=safe_url,
             amount_usd=amount_usd,
         )
         _AUDIT.emit(
