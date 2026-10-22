@@ -6,6 +6,19 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- `certifi` 2026.7.22 → 2026.10.19 in `uv.lock` (PYSEC-2026-4320). The new
+  bundle drops emSign ECC Root CA - G3, the root behind the eMudhra intermediates
+  with trivially recoverable keys (Mozilla bug 2083449). certifi is a runtime
+  dependency through presidio-hardened-x402 and httpx, and Python HTTPS clients
+  do not check revocation. PyPI installs already resolve the current certifi;
+  this updates locked installs.
+- Locked `mcp` 2.1.1 → 2.3.0 (CVE-2026-59951), its `pyjwt` 2.13.0 → 2.15.1
+  (PYSEC-2026-4140..4152, PYSEC-2026-4183, GHSA-pxh4-856f-4h89) and
+  `opentelemetry-api` 1.44.0 → 1.45.1 (CVE-2026-114603). The `mcp[cli]>=2.0.0,<3.0.0`
+  range is unchanged.
+
 ## [0.3.0] — 2026-10-18
 
 ### Added
