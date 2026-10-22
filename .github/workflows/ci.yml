@@ -115,3 +115,22 @@ jobs:
             --ignore-vuln PYSEC-2026-3552 \
             --ignore-vuln PYSEC-2026-3553 \
             --ignore-vuln PYSEC-2026-3554
+
+  audit-lock:
+    name: Dependency audit (uv.lock)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Run pip-audit over the locked tree
+        # The `audit` job above checks what a fresh `pip install` resolves; this
+        # one checks uv.lock, which a fresh resolve never sees. Without it the lock
+        # kept certifi, mcp, pyjwt and opentelemetry-api versions with known
+        # advisories (fixed 2026-10-22). No waivers: the locked tree resolves
+        # cryptography 50.x, so the three cryptography IDs above do not apply.
+        run: >
+          uv run --locked --python 3.12
+          --extra dev --extra nlp --extra redis
+          --with pip-audit==2.10.1
+          pip-audit --progress-spinner=off --skip-editable
