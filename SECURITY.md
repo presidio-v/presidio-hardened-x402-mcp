@@ -56,7 +56,9 @@ Out-of-scope (route to parent repo):
 ## Dependency Security
 
 - Dependencies are pinned via `uv.lock`; lockfile drift is enforced in CI
-- `pip-audit` runs per PR; Medium+ CVEs without a documented waiver block merge
+- `pip-audit` runs per PR twice: over a fresh `pip install` (what PyPI users
+  resolve) and over `uv.lock` (what locked installs get). Medium+ CVEs without a
+  documented waiver block merge; the waivers below apply to the fresh install only
 - Dependabot is configured for weekly `pip` and `github-actions` ecosystem updates
 - CodeQL / Bandit SAST runs per PR and on a weekly schedule
 - Secret-scanning (Gitleaks) runs per PR
