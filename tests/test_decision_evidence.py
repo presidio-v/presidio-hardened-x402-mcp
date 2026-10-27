@@ -57,6 +57,7 @@ def clean_env(monkeypatch):
     monkeypatch.setattr(srv, "_POLICY", PolicyEngine(PolicyConfig(max_per_call_usd=5.0)))
     monkeypatch.setattr(srv, "_REPLAY", ReplayGuard(ttl=300))
     monkeypatch.setattr(srv, "_EVIDENCE", None)
+    monkeypatch.setattr(srv, "_GATE", None)
 
 
 @pytest.fixture
@@ -155,8 +156,9 @@ class TestEveryDecisionIsSignedAndVerifies:
 
     @pytest.mark.anyio
     async def test_no_capability_parents(self, signed):
-        """The MCP has no capability chain, so ADR-0002 top-level ``parents``
-        is never populated."""
+        """Without a configured gate certificate the MCP has no lineage to
+        name (no capability chain), so ADR-0002 top-level ``parents`` is not
+        populated. Gate-certificate parents are covered in test_gate_parents."""
         await check_payment_policy(resource_url="https://x.test/a", amount_usd=1.0)
         (env,) = signed["records"]()
         assert "parents" not in env["payment_decision"]
