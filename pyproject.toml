@@ -51,6 +51,12 @@ fuzz = [
 ]
 nlp = ["presidio-hardened-x402[nlp]>=0.13.0,<0.14.0"]
 redis = ["presidio-hardened-x402[redis]>=0.13.0,<0.14.0"]
+gate = [
+    # PRESIDIO_X402_MCP_GATE_CERTIFICATE: ikigov-assess's own verifier, and
+    # certificate_content_hash (the ADR-0006 identity) from 0.29.0. [crypto]
+    # because certificates are Ed25519-signed.
+    "presidio-hardened-ikigov-assess[crypto]>=0.29.0,<1",
+]
 
 [project.scripts]
 presidio-hardened-x402-mcp = "presidio_x402_mcp.server:main"
