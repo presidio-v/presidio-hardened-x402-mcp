@@ -6,6 +6,19 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Gate-certificate parents (#82). With the new `[gate]` extra,
+  `PRESIDIO_X402_MCP_GATE_CERTIFICATE` and `PRESIDIO_X402_MCP_GATE_TRUST` name
+  the ikigov-assess `gate-certificate@1` the server's payments are authorised
+  under. Each certificate is verified at startup with ikigov-assess's
+  `verify_certificate` and must be `OPEN`; its ADR-0006 identity
+  (`certificate_content_hash`) becomes the top-level `parents` of every
+  `payment-decision@1` record. A configured certificate that does not hold stops
+  the server, as does a gate configured while signed evidence is off. Past the
+  earliest `not_after`, records drop all gate parents and one WARNING is logged;
+  gate answers do not change. Unset, behaviour is as in 0.3.0.
+
 ### Security
 
 - `certifi` 2026.7.22 → 2026.10.19 in `uv.lock` (PYSEC-2026-4320). The new

@@ -28,6 +28,10 @@ Signed decision evidence (payment-decision@1, written alongside the audit log):
   - PRESIDIO_X402_MCP_EVIDENCE_KEY_ID        optional key id
   - PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY   1 -> refuse to start without working evidence
 
+Gate-certificate parents (ADR-0002 `parents` on every record; needs the [gate] extra):
+  - PRESIDIO_X402_MCP_GATE_CERTIFICATE       gate-certificate@1 path(s), os.pathsep-separated
+  - PRESIDIO_X402_MCP_GATE_TRUST             issuer trust store (required with the above)
+
 Cross-process keys (read by the underlying lib):
   - PRESIDIO_X402_FINGERPRINT_KEY            32-byte hex           (replay HMAC)
   - PRESIDIO_X402_CHAIN_KEY                  32-byte hex           (audit HMAC chain)
@@ -47,6 +51,7 @@ import stat
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -82,6 +87,7 @@ from presidio_x402.mica import EvidenceError, sign_evidence
 from presidio_x402.replay_guard import compute_fingerprint
 
 from presidio_x402_mcp import __version__
+from presidio_x402_mcp.gate import GateCertificateError, GateParents, load_gate_parents
 
 logger = logging.getLogger("presidio_x402_mcp")
 logger.setLevel(os.getenv("PRESIDIO_X402_MCP_LOG_LEVEL", "INFO"))
@@ -320,6 +326,75 @@ def _evidence_from_env() -> _EvidenceConfig | None:
 
 _EVIDENCE: _EvidenceConfig | None = _evidence_from_env()
 
+_GATE_CERTIFICATE_ENV = "PRESIDIO_X402_MCP_GATE_CERTIFICATE"
+_GATE_TRUST_ENV = "PRESIDIO_X402_MCP_GATE_TRUST"
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _gate_from_env() -> GateParents | None:
+    """Verify the operator's gate certificates once, at startup.
+
+    Unset ⇒ no parents, the 0.3.x behaviour. Set ⇒ every certificate must
+    verify against the trust store with decision OPEN, or the server refuses to
+    start: a gate the operator named but that does not hold is a deployment
+    defect, not something to sign around.
+    """
+    certificates = [
+        Path(p) for p in os.getenv(_GATE_CERTIFICATE_ENV, "").split(os.pathsep) if p.strip()
+    ]
+    trust = os.getenv(_GATE_TRUST_ENV, "").strip()
+    if not certificates and not trust:
+        return None
+    if not certificates or not trust:
+        raise ConfigurationError(
+            f"{_GATE_CERTIFICATE_ENV} and {_GATE_TRUST_ENV} must be set together; "
+            "refusing to start"
+        )
+    try:
+        gate = load_gate_parents(certificates, Path(trust), now=_utcnow())
+    except GateCertificateError as exc:
+        raise ConfigurationError(f"{exc}; refusing to start") from exc
+    logger.info(
+        "Gate-certificate parents enabled: %d certificate(s), in force until %s",
+        len(gate.identities),
+        gate.not_after.isoformat() if gate.not_after else "no expiry",
+    )
+    if _EVIDENCE is None:
+        raise ConfigurationError(
+            f"{_GATE_CERTIFICATE_ENV} is set but signed payment-decision@1 evidence is "
+            "disabled, so no record would name the gate; refusing to start"
+        )
+    return gate
+
+
+_GATE: GateParents | None = _gate_from_env()
+_GATE_EXPIRY_LOGGED = False
+
+
+def _gate_parents() -> list[str]:
+    """Parents for the next record: the gate identities while they are in force."""
+    global _GATE_EXPIRY_LOGGED
+    gate = _GATE
+    if gate is None:
+        return []
+    parents = gate.current(_utcnow())
+    if parents:
+        return parents
+    with _ISSUED_LOCK:  # records are emitted from worker threads
+        first = not _GATE_EXPIRY_LOGGED
+        _GATE_EXPIRY_LOGGED = True
+    if first:
+        logger.warning(
+            "The configured gate certificate expired at %s; records no longer name it as a "
+            "parent. Issue a new certificate and restart the server.",
+            gate.not_after.isoformat() if gate.not_after else "?",
+        )
+    return parents
+
+
 # decision_refs this process signed. A prior_decision_refs entry is signed into
 # a later record as provenance, so only refs this server issued are accepted —
 # otherwise the signer would vouch for links an agent made up.
@@ -489,6 +564,7 @@ def _emit_decision(
             currency=_record_token(currency),
             resource_origin=resource_origin,
             controls=controls,
+            parents=_gate_parents(),
             prior_decision_refs=prior_decision_refs,
         )
         envelope = build_decision_evidence(

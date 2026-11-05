@@ -72,6 +72,8 @@ All optional. Defaults give a zero-config in-process mode with no quota, no netw
 | `PRESIDIO_X402_MCP_EVIDENCE_SIGNER` | Signer identity; the trust-store key verifiers look up | `presidio-hardened-x402-mcp` |
 | `PRESIDIO_X402_MCP_EVIDENCE_KEY_ID` | Optional key id written into each record (for rotation) | unset |
 | `PRESIDIO_X402_MCP_REQUIRE_EVIDENCE_KEY` | Fail startup unless signed evidence is fully configured and the key signs | unset |
+| `PRESIDIO_X402_MCP_GATE_CERTIFICATE` | ikigov-assess `gate-certificate@1` file(s) the payments are authorised under, `os.pathsep`-separated; needs the `[gate]` extra | unset |
+| `PRESIDIO_X402_MCP_GATE_TRUST` | Trust store for the certificate issuer (and its embedded evidence signers); required with the above | unset |
 
 Generate cross-process keys with `openssl rand -hex 32`.
 
@@ -184,7 +186,9 @@ python -m presidio_x402.decision_ref /var/log/presidio/x402-mcp-decisions.jsonl 
 
 **What a record says.** `payment-decision@1` always carries all five controls (`pii → trusted_wallet → policy → replay → mpa`). Each record holds real verdicts only for what its tool ran and `NOT_EVALUATED` for the rest: every tool screens the URL (`pii`), `check_payment_policy` adds `policy`, `check_payment_replay` adds `replay`; `trusted_wallet` and `mpa` are never evaluated here. `NOT_EVALUATED` never fails a decision and never claims a pass, so the controls block alone says which gate decided. Chain the three with `prior_decision_refs` to get one linked set per payment.
 
-**What it never contains.** Raw `resource_url`, `description`, or `reason`; only the URL's scheme and host, the entity-type labels found, and hashes (policy snapshot, replay fingerprint, payment details). The gates see PII in the URL they are handed but pay it unchanged, so their PII verdict is `PII_WARNED`; `screen_payment_metadata` returns redacted strings and records `PII_REDACTED`. Fields an MCP tool never sees — payer wallet, network, the raw 402 offer — are recorded as `unspecified` / `not-presented`. The records carry no capability-chain `parents`, so the ADR-0002 top-level `parents` field is never set.
+**What it never contains.** Raw `resource_url`, `description`, or `reason`; only the URL's scheme and host, the entity-type labels found, and hashes (policy snapshot, replay fingerprint, payment details). The gates see PII in the URL they are handed but pay it unchanged, so their PII verdict is `PII_WARNED`; `screen_payment_metadata` returns redacted strings and records `PII_REDACTED`. Fields an MCP tool never sees — payer wallet, network, the raw 402 offer — are recorded as `unspecified` / `not-presented`. Without a gate certificate the records carry no `parents`.
+
+**Gate-certificate parents (unreleased).** To link payments back to the gate decision that authorised them, install `presidio-hardened-x402-mcp[gate]` and set `PRESIDIO_X402_MCP_GATE_CERTIFICATE` and `PRESIDIO_X402_MCP_GATE_TRUST`. At startup each certificate is verified with ikigov-assess's own `verify_certificate` (issuer signature, embedded evidence, validity, recomputed decision) and must record decision `OPEN`; its ADR-0006 identity then goes into every record's top-level `parents`, so a DAG walk runs classification → gate → payment. Anything wrong (one variable without the other, a file that does not verify, a gate that is not open, the extra missing, signed evidence not enabled) stops the server. The lineage comes from operator configuration only; no tool takes a `parents` argument, so an agent cannot add one. When the earliest certificate's `not_after` passes while the server runs, records stop naming any gate (all gate parents are dropped) and one WARNING is logged; the gates keep answering. Issue a new certificate and restart.
 
 ## Modes
 
