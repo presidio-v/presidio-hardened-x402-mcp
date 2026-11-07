@@ -2,7 +2,7 @@
 
 Requirements, feature deliberation, and versioning rationale for the MCP server that exposes [`presidio-hardened-x402`](https://github.com/presidio-v/presidio-hardened-x402) library capabilities to autonomous agents over the Model Context Protocol.
 
-This package is a **thin MCP adapter**. All security primitives live in the parent library; this document specifies how selected primitives are made available over stdio MCP transport. Version `0.3.0` is pinned to parent `presidio-hardened-x402>=0.13.0,<0.14.0` (first release with the `NOT_EVALUATED` control verdict); it keeps the original three-tool MCP surface, adds signed `payment-decision@1` emission from those tools, and does not expose the parent v0.7.0 SLO-payment broker as an MCP tool.
+This package is a **thin MCP adapter**. All security primitives live in the parent library; this document specifies how selected primitives are made available over stdio MCP transport. Version `0.4.0` is pinned to parent `presidio-hardened-x402>=0.14.0,<0.15.0` (Python 3.11 line; `NOT_EVALUATED` arrived in 0.13.0); it keeps the original three-tool MCP surface, adds signed `payment-decision@1` emission from those tools, and does not expose the parent v0.7.0 SLO-payment broker as an MCP tool.
 
 ---
 

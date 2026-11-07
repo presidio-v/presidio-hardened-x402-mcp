@@ -18,7 +18,7 @@ Two targets, both of which parse operator-supplied configuration:
 GOTCHAS (read before running):
   - No macOS Atheris wheel: run this under Linux CI only (the fuzz job), never
     on a developer Mac.
-  - No cp310 wheel: Atheris 3.x dropped Python 3.10. Run under Python 3.12.
+  - CI runs it under Python 3.12.
   - Editable installs can shadow the package: a `pip install -e .` checkout may
     win over the installed distribution on sys.path. Install the built wheel (or
     verify the import resolves to the real target module) before fuzzing, so the

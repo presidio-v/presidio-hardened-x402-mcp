@@ -12,7 +12,7 @@
 
 Pre-payment safety gate for x402 — agents call `screen_payment_metadata(...)`, `check_payment_policy(...)`, and `check_payment_replay(...)` before signing, catching PII, budget overruns, and duplicate payments before metadata or money leaves the agent host.
 
-Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned to parent `0.13.x` (`presidio-hardened-x402>=0.13.0,<0.14.0`). 0.13.0 is the first parent that can record a control as `NOT_EVALUATED`, which signed decision evidence needs; it also includes the 0.11.1 fix for the percent-encoded PII redaction bypass, which remains a security floor.
+Part of the [`presidio-hardened-*`](https://github.com/presidio-v) toolkit family. Thin MCP (Model Context Protocol) adapter over the [`presidio-hardened-x402`](https://pypi.org/project/presidio-hardened-x402/) library, pinned to parent `0.14.x` (`presidio-hardened-x402>=0.14.0,<0.15.0`), the parent's Python 3.11 line. 0.13.0 was the first parent that can record a control as `NOT_EVALUATED`, which signed decision evidence needs; it also includes the 0.11.1 fix for the percent-encoded PII redaction bypass, which remains a security floor.
 
 ## Why this exists
 
@@ -22,7 +22,7 @@ This MCP server gives agents a small default-deny gate *before* payment leaves t
 
 ## Install & configure
 
-Requires Python ≥ 3.10. Distributed on PyPI; recommended invocation via `uvx` (no global install).
+Requires Python ≥ 3.11. Distributed on PyPI; recommended invocation via `uvx` (no global install).
 
 ### Claude Desktop / Claude Code
 

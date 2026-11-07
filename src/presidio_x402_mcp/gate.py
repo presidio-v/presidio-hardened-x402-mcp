@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 import stat
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -147,7 +147,7 @@ def load_gate_parents(
             bound = cert_mod.parse_timestamp(result.not_after)
             if bound is None:  # verify_certificate already rejects this; stay closed
                 raise GateCertificateError(f"gate certificate {path} has a malformed not_after")
-            bounds.append(bound.astimezone(timezone.utc))
+            bounds.append(bound.astimezone(UTC))
         if identity not in identities:
             identities.append(identity)
     return GateParents(tuple(identities), min(bounds) if bounds else None)

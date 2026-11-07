@@ -121,7 +121,7 @@ Shorthand below: `REPO` = `https://github.com/presidio-v/presidio-hardened-x402-
 | `test` | **Met** | Test suite under `tests/`, licensed with the project. How to run: `CONTRIBUTING.md#local-verification` and `.github/workflows/ci.yml`. Six test modules under `tests/`, organised by tool: one per MCP tool (`test_screen_payment_metadata.py`, `test_check_payment_policy.py`, `test_check_payment_replay.py`), plus `test_remote_url_validation.py` for the TLS gate, `test_parent_compatibility.py` guarding the parent version floor, and `test_e2e_inprocess_client.py` driving the server through a real in-process MCP client. 48 tests in total. |
 | `test_invocation` | **Met** | `pytest tests/` |
 | `test_most` | **Met** | Coverage is gated in CI at `--cov-fail-under=90` on statements, currently measuring **91.27%** across 48 tests. `tests/test_e2e_inprocess_client.py` drives the server end-to-end through a real in-process MCP client rather than calling the tool functions directly. |
-| `test_continuous_integration` | **Met** | GitHub Actions on every push and PR (`.github/workflows/ci.yml`). Python 3.10, 3.11, 3.12 and 3.13 on Linux, on every push and pull request. |
+| `test_continuous_integration` | **Met** | GitHub Actions on every push and PR (`.github/workflows/ci.yml`). Python 3.11, 3.12 and 3.13 on Linux, on every push and pull request. |
 
 ## Quality — new functionality testing
 

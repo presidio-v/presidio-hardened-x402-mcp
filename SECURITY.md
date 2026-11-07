@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.3.x   | ✓ (current) |
+| 0.4.x   | ✓ (current; Python 3.11+) |
+| 0.3.x   | security fixes only (last line supporting Python 3.10) |
 | 0.2.x   | security fixes only |
 | 0.1.x   | security fixes only (mcp SDK 1.x) |
 
