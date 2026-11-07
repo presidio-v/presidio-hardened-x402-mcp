@@ -51,7 +51,7 @@ import stat
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -331,7 +331,7 @@ _GATE_TRUST_ENV = "PRESIDIO_X402_MCP_GATE_TRUST"
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _gate_from_env() -> GateParents | None:

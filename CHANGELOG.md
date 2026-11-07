@@ -6,6 +6,20 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-11-07
+
+### Changed
+
+- **Python 3.11 is now the minimum** (`requires-python = ">=3.11"`). Python 3.10
+  reached end of life in October 2026. CI tests 3.11, 3.12 and 3.13. Stay on
+  0.3.x if you still run 3.10.
+- Depends on `presidio-hardened-x402` 0.14.x, which makes the same change.
+
+### Security
+
+- Dropping 3.10 removes the 3.10-only `filelock` 4.1.0 resolution from `uv.lock`,
+  which closes GHSA-v4x8-3wr5-3wq8 (Dependabot #2, HIGH).
+
 ### Added
 
 - Gate-certificate parents (#82). With the new `[gate]` extra,

@@ -24,7 +24,7 @@ import inspect
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -50,7 +50,7 @@ ikigov_cert = pytest.importorskip("presidio_ikigov_assess.certificate")
 
 VECTOR_PATH = Path(__file__).parent / "fixtures" / "gate-certificate-valid.json"
 VECTOR_IDENTITY = "dbb7c6a36f0aea55bbe5dead3daf8f4f3d59116966e79bd4b78ecfe2a83ebd4a"
-VECTOR_AT = datetime(2026, 7, 3, tzinfo=timezone.utc)
+VECTOR_AT = datetime(2026, 7, 3, tzinfo=UTC)
 
 ISSUER = "presidio-hardened-ikigov-assess"
 SEED = "01" * 32  # family test key (private seed)
@@ -61,7 +61,7 @@ GATE_ENV = ("PRESIDIO_X402_MCP_GATE_CERTIFICATE", "PRESIDIO_X402_MCP_GATE_TRUST"
 
 
 def _utc(dt: datetime) -> str:
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _issue(
@@ -72,7 +72,7 @@ def _issue(
     seed: str = SEED,
     use_case: str = "payment-gate",
 ) -> dict:
-    issued = issued or datetime.now(timezone.utc) - timedelta(days=1)
+    issued = issued or datetime.now(UTC) - timedelta(days=1)
     doc = ikigov_cert.build_certificate(
         use_case=use_case,
         gate="G0",
@@ -147,13 +147,11 @@ class TestIdentity:
     def test_family_vector_identity_and_bound(self, vector_trust):
         gate = load_gate_parents([VECTOR_PATH], vector_trust, now=VECTOR_AT)
         assert gate.identities == (VECTOR_IDENTITY,)
-        assert gate.not_after == datetime(2027, 7, 2, tzinfo=timezone.utc)
+        assert gate.not_after == datetime(2027, 7, 2, tzinfo=UTC)
 
     def test_vector_refused_once_expired(self, vector_trust):
         with pytest.raises(GateCertificateError, match="expired"):
-            load_gate_parents(
-                [VECTOR_PATH], vector_trust, now=datetime(2028, 1, 1, tzinfo=timezone.utc)
-            )
+            load_gate_parents([VECTOR_PATH], vector_trust, now=datetime(2028, 1, 1, tzinfo=UTC))
 
     def test_duplicate_certificate_named_once(self, tmp_path, trust):
         cert = _write(tmp_path, "c.json", _issue())
@@ -165,7 +163,7 @@ class TestIdentity:
         assert gate.not_after == ikigov_cert.parse_timestamp(_issue_doc(other)["not_after"])
 
     def test_current_drops_parents_at_not_after(self):
-        bound = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        bound = datetime(2026, 1, 1, tzinfo=UTC)
         gate = GateParents(("a" * 64,), bound)
         assert gate.current(bound) == ["a" * 64]
         assert gate.current(bound + timedelta(seconds=1)) == []
@@ -257,7 +255,7 @@ class TestRefusesToStart:
         self._refused(monkeypatch, _write(tmp_path, "c.json", doc), trust, "does not verify")
 
     def test_expired(self, tmp_path, trust, monkeypatch):
-        old = _issue(issued=datetime.now(timezone.utc) - timedelta(days=40), valid_days=30)
+        old = _issue(issued=datetime.now(UTC) - timedelta(days=40), valid_days=30)
         self._refused(monkeypatch, _write(tmp_path, "c.json", old), trust, "expired")
 
     def test_untrusted_issuer(self, tmp_path, trust, monkeypatch):

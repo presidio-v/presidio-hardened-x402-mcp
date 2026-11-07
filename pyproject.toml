@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "presidio-hardened-x402-mcp"
-version = "0.3.0"
+version = "0.4.0"
 description = "MCP server exposing presidio-hardened-x402 pre-payment PII screening, policy, and replay-guard tools to autonomous agents."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "Presidio Security" }]
 keywords = [
     "mcp", "model-context-protocol", "x402", "ai-agents", "pii", "presidio",
@@ -19,7 +19,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -32,7 +31,7 @@ dependencies = [
     # mcp 2.x uses httpx2 for its own HTTP stack, so httpx no longer arrives
     # transitively — see issue #44.
     "httpx>=0.27,<1.0.0",
-    "presidio-hardened-x402>=0.13.0,<0.14.0",
+    "presidio-hardened-x402>=0.14.0,<0.15.0",
 ]
 
 [project.optional-dependencies]
@@ -44,13 +43,11 @@ dev = [
     "respx>=0.23.1",
 ]
 fuzz = [
-    # Atheris 3.x dropped Python 3.10 (last 3.10 wheel: 2.3.0); the marker keeps
-    # the extra resolvable across the full support matrix while fuzz CI pins 3.12.
-    # There is also no macOS wheel, so this runs in Linux CI only.
-    'atheris>=3.0; python_version >= "3.11"',
+    # Atheris has no macOS wheel, so this runs in Linux CI only (pinned to 3.12).
+    "atheris>=3.0",
 ]
-nlp = ["presidio-hardened-x402[nlp]>=0.13.0,<0.14.0"]
-redis = ["presidio-hardened-x402[redis]>=0.13.0,<0.14.0"]
+nlp = ["presidio-hardened-x402[nlp]>=0.14.0,<0.15.0"]
+redis = ["presidio-hardened-x402[redis]>=0.14.0,<0.15.0"]
 gate = [
     # PRESIDIO_X402_MCP_GATE_CERTIFICATE: ikigov-assess's own verifier, and
     # certificate_content_hash (the ADR-0006 identity) from 0.29.0. [crypto]
@@ -71,7 +68,7 @@ Issues = "https://github.com/presidio-v/presidio-hardened-x402-mcp/issues"
 packages = ["src/presidio_x402_mcp"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 99
 
 [tool.ruff.lint]
