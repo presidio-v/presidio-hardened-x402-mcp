@@ -13,8 +13,10 @@ def _minor_tuple(raw: str) -> tuple[int, int, int]:
 
 
 def test_parent_library_is_within_supported_range():
-    """The floor is 0.14.0, the parent's Python 3.11 line (this package requires 3.11 too).
-    Signed decision records also need 0.13.0's NOT_EVALUATED control verdict, and the
+    """The floor is 0.15.0, the first parent that ships ``presidio_x402.gate``, which
+    the server uses for gate-certificate parents. It is on the parent's Python 3.11 line
+    (this package requires 3.11 too). Signed decision records also need 0.13.0's
+    NOT_EVALUATED control verdict, and the
     0.11.1 fix below stays a floor.
 
     0.11.1 is the release in which ``PIIFilter`` stopped missing percent-encoded
@@ -24,7 +26,7 @@ def test_parent_library_is_within_supported_range():
     bypass. Do not lower this floor.
     """
     parent_version = _minor_tuple(version("presidio-hardened-x402"))
-    assert (0, 14, 0) <= parent_version < (0, 15, 0)
+    assert (0, 15, 0) <= parent_version < (0, 16, 0)
 
 
 def test_parent_symbols_are_importable():
