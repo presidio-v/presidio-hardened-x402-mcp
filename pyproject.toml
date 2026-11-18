@@ -26,7 +26,7 @@ classifiers = [
     "Framework :: AsyncIO",
 ]
 dependencies = [
-    "mcp[cli]>=2.0.0,<3.0.0",
+    "mcp[cli]>=2.2.0,<3.0.0",
     # Declared directly because server.py imports it for remote screening mode.
     # mcp 2.x uses httpx2 for its own HTTP stack, so httpx no longer arrives
     # transitively — see issue #44.
