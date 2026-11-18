@@ -65,6 +65,23 @@ Out-of-scope (route to parent repo):
 - CodeQL / Bandit SAST runs per PR and on a weekly schedule
 - Secret-scanning (Gitleaks) runs per PR
 
+### Minimum MCP SDK version
+
+`mcp[cli]>=2.2.0,<3.0.0` (raised from `>=2.0.0` in the unreleased version). The
+2.x advisories GHSA-w4fh-qvv9-3v23 (bearer token accepted for a different
+resource server), GHSA-5h93-6whr-6q8j (cross-origin redirects carrying custom
+headers), GHSA-rwrf-2pqf-9j8j (server-chosen `$ref` fetches) and
+GHSA-84m7-p3x7-pcfv (unbounded StreamableHTTP sessions) all affect
+`>=2.0.0,<2.2.0` and are fixed in 2.2.0. `uv.lock` resolves 2.3.0. This server
+runs only the stdio transport and uses no SDK OAuth client or server code, so
+none of them was reachable here. The floor keeps fresh installs off affected
+versions anyway.
+
+A 2026-11-09 CSA research note describes MCP SDK OAuth issuer-validation and
+refresh-token exposure issues. As of 2026-11-18 the GitHub Advisory Database
+has no `mcp` (PyPI) entry matching those descriptions beyond the four above.
+Recheck if one is published.
+
 ### Active audit waivers
 
 Waivers are declared as explicit `--ignore-vuln` IDs in the `audit` job of

@@ -6,6 +6,13 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- Raised the `mcp[cli]` floor to `>=2.2.0,<3.0.0` so fresh installs cannot
+  resolve 2.0.x/2.1.x, affected by GHSA-w4fh-qvv9-3v23, GHSA-5h93-6whr-6q8j,
+  GHSA-rwrf-2pqf-9j8j and GHSA-84m7-p3x7-pcfv. The lock already pins 2.3.0;
+  SECURITY.md documents the minimum SDK version (#96).
+
 ## [0.4.0] — 2026-11-07
 
 ### Changed
