@@ -86,35 +86,22 @@ jobs:
         # in the tooling rather than our dependencies (config audit 2026-06-07).
         run: python -m pip install --upgrade pip && pip install -e ".[dev,gate]" pip-audit
       - name: Run pip-audit
-        # --skip-editable skips this package's editable install (it's not on PyPI
-        # until the v0.1.0 release); real dependencies are still audited.
-        #
-        # The three --ignore-vuln entries are the documented waiver required by
-        # SECURITY.md ("Dependency Security"). They are scoped to specific IDs, so
-        # any *new* cryptography advisory still fails this job.
-        #
-        # Why they cannot be fixed by upgrading: cryptography is transitive only,
-        # and presidio-anonymizer 2.2.364 (latest) requires
-        # `cryptography>=48.0.1,<49.0.0`. The fixes ship in 49.0.0 / 50.0.0, so no
-        # resolvable version of this dependency tree carries them.
-        #
-        # Why they are not reachable here: nothing in the installed tree imports
-        # either vulnerable surface. Verified by scanning every `import
-        # cryptography` in site-packages.
-        #   PYSEC-2026-3552  PKCS#7 EnvelopedData decryption (Bleichenbacher)
-        #                    oracle -- no import of ...serialization.pkcs7
-        #   PYSEC-2026-3553  X.509 chain-building exponential-blowup DoS
-        #   PYSEC-2026-3554  X.509 name-constraint wildcard escape
-        #                    -- neither: no import of cryptography.x509.verification
-        # This tree uses cryptography only for AES-CBC (presidio-anonymizer's
-        # Encrypt operator) and Ed25519 verification (presidio-x402).
-        #
-        # Remove all three flags once presidio-anonymizer allows cryptography>=49.
+        # --skip-editable skips this package's editable install; real dependencies
+        # are still audited. Ignores only the unexpired entries in
+        # audit-exceptions.txt (none today; SECURITY.md "Active audit waivers").
+        # Any other finding, or an expired entry, fails the job.
         run: |
-          pip-audit --skip-editable \
-            --ignore-vuln PYSEC-2026-3552 \
-            --ignore-vuln PYSEC-2026-3553 \
-            --ignore-vuln PYSEC-2026-3554
+          today=$(date -u +%F)
+          ignore=()
+          while read -r id scope kind expires rest; do
+            case "$id" in ""|"#"*|"@"*) continue ;; esac
+            if [[ "$expires" < "$today" ]]; then
+              echo "::warning::audit-exceptions.txt: $id expired on $expires and is no longer ignored"
+              continue
+            fi
+            ignore+=(--ignore-vuln "$id")
+          done < audit-exceptions.txt
+          pip-audit --skip-editable "${ignore[@]}"
 
   audit-lock:
     name: Dependency audit (uv.lock)
@@ -127,8 +114,7 @@ jobs:
         # The `audit` job above checks what a fresh `pip install` resolves; this
         # one checks uv.lock, which a fresh resolve never sees. Without it the lock
         # kept certifi, mcp, pyjwt and opentelemetry-api versions with known
-        # advisories (fixed 2026-10-22). No waivers: the locked tree resolves
-        # cryptography 50.x, so the three cryptography IDs above do not apply.
+        # advisories (fixed 2026-10-22). No waivers.
         run: >
           uv run --locked --python 3.12
           --extra dev --extra nlp --extra redis --extra gate

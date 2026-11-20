@@ -8,6 +8,9 @@ versioning follows [SemVer](https://semver.org/).
 
 ### Security
 
+- Removed the three `cryptography` audit waivers (PYSEC-2026-3552/3553/3554):
+  `presidio-anonymizer` 2.2.366 requires `cryptography>=50`, so fresh installs resolve the
+  fixed line. Audit waivers now live in `audit-exceptions.txt`, which CI reads with an expiry.
 - Raised the `mcp[cli]` floor to `>=2.2.0,<3.0.0` so fresh installs cannot
   resolve 2.0.x/2.1.x, affected by GHSA-w4fh-qvv9-3v23, GHSA-5h93-6whr-6q8j,
   GHSA-rwrf-2pqf-9j8j and GHSA-84m7-p3x7-pcfv. The lock already pins 2.3.0;

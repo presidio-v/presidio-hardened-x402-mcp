@@ -84,23 +84,18 @@ Recheck if one is published.
 
 ### Active audit waivers
 
-Waivers are declared as explicit `--ignore-vuln` IDs in the `audit` job of
-`.github/workflows/ci.yml`. Scoping them to single advisory IDs means an
-unrelated advisory in the same package still blocks merge.
+None. Waivers live in [`audit-exceptions.txt`](./audit-exceptions.txt): one line per
+advisory, pinned to a package version, with an expiry date and a reason pointing to a
+section of this file. CI ignores only unexpired entries, so an expired waiver fails the
+`audit` job until it is renewed or removed. The PRESIDIO nightly dependency scan reads the
+same file.
 
-| Advisory | Package | Rationale | Removal condition |
-|---|---|---|---|
-| PYSEC-2026-3552 | `cryptography` 48.0.1 | PKCS#7 `EnvelopedData` decryption oracle. Not reachable: nothing in the dependency tree imports `cryptography.hazmat.primitives.serialization.pkcs7`. Fix lands in 50.0.0, which the tree cannot resolve. | `presidio-anonymizer` allows `cryptography>=49` |
-| PYSEC-2026-3553 | `cryptography` 48.0.1 | X.509 chain-building exponential-blowup DoS. Not reachable: nothing imports `cryptography.x509.verification`. Fix lands in 49.0.0. | as above |
-| PYSEC-2026-3554 | `cryptography` 48.0.1 | X.509 name-constraint wildcard escape. Same unreachable surface as PYSEC-2026-3553. Fix lands in 49.0.0. | as above |
-
-`cryptography` is a transitive dependency only. `presidio-anonymizer` 2.2.364
-(latest at time of waiver) requires `cryptography>=48.0.1,<49.0.0`, so no
-resolvable version of this tree contains the fixes. This tree uses
-`cryptography` solely for AES-CBC (the `presidio-anonymizer` Encrypt operator)
-and Ed25519 signing and verification (`presidio-x402`, including the MCP's
-decision records) — neither touches the
-affected code paths.
+Removed 2026-11-20: PYSEC-2026-3552, PYSEC-2026-3553 and PYSEC-2026-3554 (`cryptography`
+48.0.1). They were waived while `presidio-anonymizer` required `cryptography<49`, on the
+grounds that nothing in the tree imports the affected PKCS#7 and X.509 verification code.
+`presidio-anonymizer` 2.2.366 requires `cryptography>=50.0.0,<51.0.0`, so a fresh install
+now resolves the fixed 50.x line and pip-audit reports no known vulnerabilities without
+the waivers.
 
 ## Software Development Lifecycle
 

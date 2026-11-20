@@ -1,0 +1,13 @@
+# pip-audit exception register. Read by CI (.github/workflows/ci.yml) and by the
+# PRESIDIO nightly scan, which also needs the operator's acknowledgement before it
+# leaves an entry out of its report. One entry per line, all fields mandatory:
+#
+#   <advisory id> <scope runtime|extras|shipped|all> <kind accepted|blocker> <expires YYYY-MM-DD> <package==version> <reason citing SECURITY.md#section>
+#
+# accepted: assessed and mitigated or unreachable; renew or remove by the expiry date.
+# blocker:  no fix within our pins yet; stops being ignored once a fix is published.
+# An expired entry is no longer ignored, so CI fails until it is renewed or removed.
+
+# No entries. The three cryptography waivers (PYSEC-2026-3552/3553/3554) were removed on
+# 2026-11-20: presidio-anonymizer 2.2.366 requires cryptography>=50, so a fresh install resolves
+# the fixed 50.x line (SECURITY.md#active-audit-waivers).
