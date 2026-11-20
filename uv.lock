@@ -1093,7 +1093,7 @@ crypto = [
 
 [[package]]
 name = "presidio-hardened-x402"
-version = "0.14.0"
+version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1107,12 +1107,15 @@ dependencies = [
     { name = "setuptools" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/43/209754dd3ee5ee804d31f2dd1a747c2583c56d481879e225026a8a732da3/presidio_hardened_x402-0.14.0.tar.gz", hash = "sha256:4a51b8a73c68b60f9699f32fa935a0d1a93eb27411ba930f9bac336f2b3c2b28", size = 614758, upload-time = "2026-11-07T19:46:52.465Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/23/b1a8464b5cdd31e73254b9fb03ac58d781c1a4de3f2b152bda2d54430414/presidio_hardened_x402-0.15.0.tar.gz", hash = "sha256:eaf074cf5fe26f16bc79afe67b52ed31d5a1f49ad447c81d61156bdbfe14fade", size = 630776, upload-time = "2026-11-14T18:50:40.177Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/a3/9a3b7722acd01db4254869f1a7ab192e16b98761328bc7233a6ab536d459/presidio_hardened_x402-0.14.0-py3-none-any.whl", hash = "sha256:451812e6de15a389bebc46f32cd2b03673dbca7442427d32db1dca954fae67fc", size = 178430, upload-time = "2026-11-07T19:46:50.587Z" },
+    { url = "https://files.pythonhosted.org/packages/67/0d/40144109c7f7e46a7912e08710eef2d2d9a9791bfe7a8be4e4cb3f49c546/presidio_hardened_x402-0.15.0-py3-none-any.whl", hash = "sha256:7d34fa1d7ee8466d6fa75afb7a409718e136c3474734a91e65629881fea31be4", size = 183850, upload-time = "2026-11-14T18:50:38.608Z" },
 ]
 
 [package.optional-dependencies]
+gate = [
+    { name = "presidio-hardened-ikigov-assess", extra = ["crypto"] },
+]
 nlp = [
     { name = "spacy" },
 ]
@@ -1142,7 +1145,7 @@ fuzz = [
     { name = "atheris" },
 ]
 gate = [
-    { name = "presidio-hardened-ikigov-assess", extra = ["crypto"] },
+    { name = "presidio-hardened-x402", extra = ["gate"] },
 ]
 nlp = [
     { name = "presidio-hardened-x402", extra = ["nlp"] },
@@ -1157,10 +1160,10 @@ requires-dist = [
     { name = "atheris", marker = "extra == 'fuzz'", specifier = ">=3.0" },
     { name = "httpx", specifier = ">=0.27,<1.0.0" },
     { name = "mcp", extras = ["cli"], specifier = ">=2.2.0,<3.0.0" },
-    { name = "presidio-hardened-ikigov-assess", extras = ["crypto"], marker = "extra == 'gate'", specifier = ">=0.29.0,<1" },
-    { name = "presidio-hardened-x402", specifier = ">=0.14.0,<0.15.0" },
-    { name = "presidio-hardened-x402", extras = ["nlp"], marker = "extra == 'nlp'", specifier = ">=0.14.0,<0.15.0" },
-    { name = "presidio-hardened-x402", extras = ["redis"], marker = "extra == 'redis'", specifier = ">=0.14.0,<0.15.0" },
+    { name = "presidio-hardened-x402", specifier = ">=0.15.0,<0.16.0" },
+    { name = "presidio-hardened-x402", extras = ["gate"], marker = "extra == 'gate'", specifier = ">=0.15.0,<0.16.0" },
+    { name = "presidio-hardened-x402", extras = ["nlp"], marker = "extra == 'nlp'", specifier = ">=0.15.0,<0.16.0" },
+    { name = "presidio-hardened-x402", extras = ["redis"], marker = "extra == 'redis'", specifier = ">=0.15.0,<0.16.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "respx", marker = "extra == 'dev'", specifier = ">=0.23.1" },

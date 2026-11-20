@@ -32,14 +32,14 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from presidio_x402 import PolicyConfig, PolicyEngine, ReplayGuard, verify_decision_ref
 from presidio_x402.exceptions import ConfigurationError
-
-from presidio_x402_mcp import server as srv
-from presidio_x402_mcp.gate import (
+from presidio_x402.gate import (
     MAX_FILE_BYTES,
     GateCertificateError,
     GateParents,
     load_gate_parents,
 )
+
+from presidio_x402_mcp import server as srv
 from presidio_x402_mcp.server import (
     check_payment_policy,
     check_payment_replay,

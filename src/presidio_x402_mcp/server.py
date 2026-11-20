@@ -83,11 +83,11 @@ from presidio_x402.exceptions import (
     PolicyViolationError,
     ReplayDetectedError,
 )
+from presidio_x402.gate import GateCertificateError, GateParents, load_gate_parents
 from presidio_x402.mica import EvidenceError, sign_evidence
 from presidio_x402.replay_guard import compute_fingerprint
 
 from presidio_x402_mcp import __version__
-from presidio_x402_mcp.gate import GateCertificateError, GateParents, load_gate_parents
 
 logger = logging.getLogger("presidio_x402_mcp")
 logger.setLevel(os.getenv("PRESIDIO_X402_MCP_LOG_LEVEL", "INFO"))
@@ -356,6 +356,11 @@ def _gate_from_env() -> GateParents | None:
     try:
         gate = load_gate_parents(certificates, Path(trust), now=_utcnow())
     except GateCertificateError as exc:
+        if isinstance(exc.__cause__, ImportError):
+            raise ConfigurationError(
+                f"{_GATE_CERTIFICATE_ENV} needs the [gate] extra: "
+                "pip install 'presidio-hardened-x402-mcp[gate]'; refusing to start"
+            ) from exc
         raise ConfigurationError(f"{exc}; refusing to start") from exc
     logger.info(
         "Gate-certificate parents enabled: %d certificate(s), in force until %s",

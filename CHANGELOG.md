@@ -6,6 +6,15 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Gate-certificate loader comes from presidio-hardened-x402 0.15.0.** `presidio_x402_mcp.gate`
+  is removed; the server uses `presidio_x402.gate`, the port of this package's loader that
+  x402 0.15.0 ships (same verifier, OPEN-only rule, earliest `not_after`, bounded reads and
+  ADR-0006 identity), so both packages name a gate from one implementation. The dependency
+  moves to `presidio-hardened-x402>=0.15.0,<0.16.0`, and the `[gate]` extra now pulls
+  `presidio-hardened-x402[gate]`. `PRESIDIO_X402_MCP_GATE_CERTIFICATE` behaves as before.
+
 ### Security
 
 - Raised the `mcp[cli]` floor to `>=2.2.0,<3.0.0` so fresh installs cannot
