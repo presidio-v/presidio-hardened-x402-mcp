@@ -31,7 +31,7 @@ dependencies = [
     # mcp 2.x uses httpx2 for its own HTTP stack, so httpx no longer arrives
     # transitively — see issue #44.
     "httpx>=0.27,<1.0.0",
-    "presidio-hardened-x402>=0.14.0,<0.15.0",
+    "presidio-hardened-x402>=0.14.0,<0.16.0",
 ]
 
 [project.optional-dependencies]
@@ -46,8 +46,8 @@ fuzz = [
     # Atheris has no macOS wheel, so this runs in Linux CI only (pinned to 3.12).
     "atheris>=3.0",
 ]
-nlp = ["presidio-hardened-x402[nlp]>=0.14.0,<0.15.0"]
-redis = ["presidio-hardened-x402[redis]>=0.14.0,<0.15.0"]
+nlp = ["presidio-hardened-x402[nlp]>=0.14.0,<0.16.0"]
+redis = ["presidio-hardened-x402[redis]>=0.14.0,<0.16.0"]
 gate = [
     # PRESIDIO_X402_MCP_GATE_CERTIFICATE: ikigov-assess's own verifier, and
     # certificate_content_hash (the ADR-0006 identity) from 0.29.0. [crypto]
